@@ -1,4 +1,5 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, after } from 'next/server';
+import { processApplicationNotifications } from '../../../lib/server/application-notifications';
 import { createHash } from 'node:crypto';
 import { parseIntake, toRow } from '../../../lib/intake.mjs';
 import { adminClient, intakeConfig } from '../../../lib/server/supabase';
@@ -47,6 +48,11 @@ export async function POST(request) {
       const { data: existing, error: lookupError } = await client.from(table).select('request_hash').eq('request_id', input.requestId).maybeSingle();
       if (lookupError || !existing || existing.request_hash !== requestHash) return fail(409, 'This submission conflicts with an earlier request. Please reload the form.');
     } else if (error) return fail(503, 'Could not save your request. Please try again.');
+    // Best-effort fast delivery; the persisted outbox plus an external scheduler handles retries.
+    if (input.kind === 'application') {
+      try { after(async () => { try { await processApplicationNotifications(1); } catch { /* queue remains for retry */ } }); }
+      catch { /* a platform without after() still returns success; the scheduler will retry */ }
+    }
     return NextResponse.json({ ok: true }, { headers: { 'Cache-Control': 'no-store' } });
   } catch { return fail(503, 'Could not save your request. Please try again.'); }
 }
