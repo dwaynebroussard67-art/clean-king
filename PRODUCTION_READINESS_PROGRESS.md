@@ -1,0 +1,48 @@
+# Production-readiness progress
+
+**Current branch:** `arena/92c0fe13-the-king-of-clean`
+**Baseline:** main at `97778698ed203dd0a5304fbd02f1c84a23d86c61`
+**Status:** closer to production, **not ready for real customers, employees, or applicant data**. This describes local code and test results, not a deployment. No connected project was selected or changed.
+
+## Work completed in this iteration
+
+1. **Dependency risk:** upgraded Next.js 15.5.29 to 16.4.6, which brings patched PostCSS 8.5.23; `npm audit --audit-level=moderate` reports zero vulnerabilities at the time of this check. The upgrade is a major framework change; local build and browser tests are not a substitute for real staging and deployment verification. Documented minimum Node version is now 22, required by the installed Supabase SDK. Renamed Next's deprecated middleware convention to `proxy.js` and included employee session refresh.
+2. **Fail-closed deployment guard:** development-only email-link owner login and public intake are deliberately unavailable in a production build **even if the flags are true**. Referral and the experimental owner assistant depend on those gates and remain unavailable too. A synthetic production-build smoke test checks this. A future release must replace these gates only after secure owner/employee authentication and the other launch controls are actually built and tested; simply changing environment flags cannot launch the platform.
+3. **Intake boundary tests:** extracted the HTTP handler with injectable dependencies and added tests for missing configuration, origin/content type, request-size enforcement, malformed input, Turnstile failures, database errors, duplicate retries, and referred submission outcomes. These use mocks, not a deployed database/Turnstile service.
+4. **Safer retry experience:** form submits have a finite timeout and a synchronous double-submit lock. The browser keeps only a random request ID in tab session storage across reloads and reuses it for retries; it never stores applicant details or a hash of them. It warns before explicitly starting over after a conflicting request. This reduces duplicates but does **not** guarantee exactly-once processing: storage can be blocked, tabs/sessions can end, and an applicant can start a new request. Turnstile still needs a fresh token after an uncertain response.
+5. **Owner inbox:** added independent newest-first pagination for applications and quotes, with a `(created_at, id)` cursor and supporting database indexes (`20261117050000_owner_pagination.sql`). Local tests cover equal timestamps, cursor validation and preservation of the other section. There is no arbitrary page jump; older pages and return-to-latest are supported. PostgREST and full authenticated browser behavior still need live staging validation.
+6. **Notification queue visibility:** the protected scheduler response now remains HTTP 503 for terminal failures or stale backlog, with aggregate counts only (`20261117060000_notification_health.sql`). Pending records become overdue 15 minutes after their scheduled availability; processing leases are stale after two minutes. This **does not send an alert** or provision a scheduler: an independent monitor must be configured and tested, including monitoring scheduler liveness. Notifications remain hard-disabled in production until the intake gate is replaced.
+7. **Owner-approved onboarding preparation:** a development-only owner action atomically marks an applicant hired, creates one preparation record linked to the applicant, and creates three owner-note tasks (`20261117070000_owner_onboarding.sql`). Direct status updates are revoked; owner-only functions audit decisions and task changes. Notes are not proof of employment eligibility or training, and this does not create a login, welcome message, actual training assignment or shift. Historical hires without a record require an explicit owner action. Local tests include rollback and idempotent retries; actual simultaneous claims on real Postgres and an authenticated browser remain untested.
+8. **Repeatable verification:** added GitHub Actions checks for clean install, dependency audit, local tests, production build, production guards, and mocked mobile browser/accessibility flows. GitHub Actions has not been run on a remote PR in this iteration; local tests do not guarantee CI success. The browser suite mocks the API and Turnstile and does not demonstrate real email, referral attribution, or authentication.
+
+## What still blocks production
+
+- Implement and independently test strong owner authentication (passkeys, approved devices, recovery, revocation and step-up), secure employee enrollment and role-specific authorization. Development email links must not be used as a production substitute.
+- Select and authorize a dedicated test project and staging target; apply **all migrations in order**. Run real Supabase/RLS, concurrent referral-claim, Turnstile, mail delivery, authenticated pagination and two-session end-to-end tests with synthetic data. None of the new migrations has been applied remotely. Index creation can lock writes on large tables and needs a migration plan.
+- Configure a reliable scheduler and independent alerts; verify recipient and sender domain, mailbox delivery, retry/idempotency limits, retention/deletion, backups and restore, WAF/rate limits, incident response and approved bilingual/legal content. Real notification delivery remains untested.
+- Complete the actual hire-to-employee-account/onboarding, employee portal, verified training, scheduling and atomic coverage workflows. The existing dashboard and Bench still use fictional data. The assistant has no operational tools and must not make hiring decisions.
+- The optional 30-second video introduction is **not implemented**. It needs privacy/fair-hiring policies, consent, accessible alternative, bounded and independently inspected media, private storage, authorized access, and deletion/cleanup before release.
+- Receive Andy's approved business/brand details and notification email; obtain client permission and approved documents before any real site maps or directions. No real school, hospital, patient or customer information belongs in the public demo.
+
+## Architecture decisions and tradeoffs
+
+Scores are qualitative (1–5); security is a hard constraint, not a weighted tradeoff.
+
+| Choice | Correctness | Efficiency | Maintainability | Security | Minimality | Rationale |
+|---|---:|---:|---:|---:|---:|---|
+| Upgrade patched Next 16 and test (chosen) | 4 | 4 | 4 | 5 | 3 | Removes known installed dependency advisories but requires major-version staging regression testing. |
+| Force a transitive PostCSS override on Next 15 | 3 | 5 | 2 | 3 | 4 | Smaller immediate change but overrides the framework's dependency choice; compatibility remains uncertain. |
+| Keyset pagination with creation time and ID (chosen) | 4 | 5 | 4 | 5 | 3 | Avoids skipping equal-time records and costly deep offsets. New rows are discovered by returning to latest; real PostgREST testing remains needed. |
+| Offset pagination | 2 | 2 | 5 | 5 | 5 | Simpler, but records can shift between pages as new applications arrive, causing gaps or duplicates. |
+| Atomic owner-controlled onboarding record (chosen) | 4 | 4 | 4 | 5 | 3 | Same transaction creates the record and preparation tasks; no duplicate applicant record or fake account. Concurrency and actual provider integration need staging. |
+| Status-label-only “hire” | 1 | 5 | 4 | 2 | 5 | A label can imply an employee exists when no onboarding was started. |
+| Store opaque request ID only per tab (chosen) | 4 | 5 | 4 | 5 | 4 | Helps same-tab reload retries without persisting personal data; cannot recover a lost tab or guarantee exactly-once submissions. |
+| Store full form in browser storage | 3 | 5 | 3 | 2 | 4 | Helps resume but unnecessarily retains sensitive personal information without a reviewed policy. |
+
+Request-body validation is O(n) time and O(n) memory, bounded to 16 KiB. Cursor decoding is O(n) with input bounded to 200 characters. Indexed keyset retrieval typically avoids scanning a growing offset, but no production-scale query benchmark was performed. Onboarding locks one applicant row and inserts a fixed three-task set, O(1) application-side work plus indexed database operations; contention and concurrent live database behavior are unbenchmarked. Queue health aggregates are database work whose cost depends on queue size and indexes; no load test has been performed.
+
+## Operating and verification notes
+
+Use Node 22+, `npm ci`, `npm test`, `npm run build`, then `npm run test:production`. For local browser tests, install a Playwright Chromium browser (`npx playwright install chromium`) and run `npm run test:e2e`. The browser suite uses synthetic configuration and mocks, not live credentials. The current pass passed 46 Node/local-database tests and four mocked Chromium browser tests, the production build and fail-closed smoke test, `git diff --check`, and `npm audit --audit-level=moderate` (zero reported vulnerabilities at the time of testing). The integrated synthetic referral-to-onboarding test uses all migrations in order against PGlite, with mocked Turnstile and no external providers. The browser run logged non-fatal preload warnings in the sandbox; remote CI has not been run yet. `npm audit --audit-level=moderate` should be rerun regularly; dependency advisory results can change.
+
+Existing historical reviews remain useful for context but are snapshots, not the current audit or implementation state. See `README.md` for setup and `PROJECT_STATUS_AND_ROADMAP.md` / `IMPLEMENTATION_PLAN.md` for the broader roadmap.

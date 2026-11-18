@@ -8,14 +8,14 @@ test('application notifications are atomic, private, leased and safely retried',
  try {
   await db.exec(`create role anon; create role authenticated; create role service_role bypassrls; create schema auth; create table auth.users(id uuid primary key); create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub', true),'')::uuid $$; grant usage on schema auth to authenticated, anon; grant execute on function auth.uid() to authenticated, anon;`);
   const first=(await readFile(new URL('../supabase/migrations/20261117000000_intake_foundation.sql',import.meta.url),'utf8')).replace('create extension if not exists pgcrypto;','');
-  await db.exec(first);await db.exec(await readFile(new URL('../supabase/migrations/20261117010000_application_notifications.sql',import.meta.url),'utf8'));
+  await db.exec(first);await db.exec(await readFile(new URL('../supabase/migrations/20261117010000_application_notifications.sql',import.meta.url),'utf8'));await db.exec(await readFile(new URL('../supabase/migrations/20261117060000_notification_health.sql',import.meta.url),'utf8'));
   const owner='11111111-1111-4111-8111-111111111111', stranger='22222222-2222-4222-8222-222222222222';
   await db.exec(`insert into auth.users values ('${owner}'),('${stranger}'); insert into public.owner_memberships values ('${owner}',now());`);
   await db.exec(`set role service_role; insert into public.applicants(request_id, request_hash, first_name, phone, area, shifts, transportation, languages, sms_consent, sms_consent_version, form_language) values ('33333333-3333-4333-8333-333333333333',repeat('a',64),'Example','3375550199','Example',array['nights'],true,array['en'],false,'application-v1','en'); reset role;`);
   assert.equal((await db.query('select count(*)::int as n from public.application_notifications')).rows[0].n,1);
-  await db.exec(`set role anon;`);await assert.rejects(db.query('select public.claim_application_notification()'));await db.exec(`reset role; set role authenticated; select set_config('request.jwt.claim.sub','${stranger}',false);`);
+  await db.exec(`set role anon;`);await assert.rejects(db.query('select public.claim_application_notification()'));await assert.rejects(db.query('select * from public.application_notification_health()'));await db.exec(`reset role; set role authenticated; select set_config('request.jwt.claim.sub','${stranger}',false);`);
   assert.equal((await db.query('select id from public.application_notifications')).rows.length,0);
-  await assert.rejects(db.query('select public.claim_application_notification()'));
+  await assert.rejects(db.query('select public.claim_application_notification()'));await assert.rejects(db.query('select * from public.application_notification_health()'));
   await db.exec(`select set_config('request.jwt.claim.sub','${owner}',false);`);
   assert.equal((await db.query('select id,status from public.application_notifications')).rows.length,1);
   await assert.rejects(db.query('select lease_token from public.application_notifications'));
@@ -41,5 +41,9 @@ test('application notifications are atomic, private, leased and safely retried',
   const finalJob=(await db.query('select * from public.claim_application_notification()')).rows[0];
   assert.ok(finalJob);assert.equal((await db.query(`select public.finish_application_notification('${finalJob.notification_id}','${finalJob.claim_token}',false) as ok`)).rows[0].ok,true);
   await db.exec('reset role');assert.equal((await db.query('select status from public.application_notifications')).rows[0].status,'failed');
+  await db.exec('set role service_role');
+  assert.deepEqual((await db.query('select * from public.application_notification_health()')).rows,[{failed_count:1,overdue_count:0}]);
+  await db.exec("reset role; update public.application_notifications set status='pending',available_at=now()-interval '16 minutes'; set role service_role");
+  assert.deepEqual((await db.query('select * from public.application_notification_health()')).rows,[{failed_count:0,overdue_count:1}]);
  } finally {await db.close()}
 });

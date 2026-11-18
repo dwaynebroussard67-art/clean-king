@@ -28,12 +28,23 @@ export async function updateIntake(form){
   const client=await authorizedClient(); if(!client) redirect('/owner/login');
   const type=String(form.get('type')), id=String(form.get('id')), field=String(form.get('field')), value=String(form.get('value'));
   if(!uuid.test(id)) return;
-  let table, update;
-  if(type==='application' && field==='status' && ['new','later','screening','hired','passed'].includes(value)){table='applicants';update={status:value}}
-  else if(type==='application' && ['school_cleared','hospital_cleared'].includes(field) && ['true','false'].includes(value)){table='applicants';update={[field]:value==='true'}}
-  else if(type==='lead' && field==='status' && ['new','contacted','closed'].includes(value)){table='leads';update={status:value}}
-  else return;
-  const {error}=await client.from(table).update(update).eq('id',id);
+  let error;
+  if(type==='application' && field==='status' && value==='hired') {
+    const result=await client.rpc('start_employee_onboarding',{p_applicant_id:id});
+    if(result.error || !['created','existing'].includes(result.data?.[0]?.result)) error=true;
+  } else if(type==='application' && field==='status' && ['new','later','screening','passed'].includes(value)) {
+    const result=await client.rpc('set_applicant_status',{p_id:id,p_status:value});
+    if(result.error || result.data!==true) error=true;
+  } else if(type==='onboarding' && ['review_documents','plan_training','plan_first_shift'].includes(field) && ['true','false'].includes(value)) {
+    const result=await client.rpc('record_onboarding_task',{p_onboarding_id:id,p_task:field,p_recorded:value==='true'});
+    if(result.error || result.data!==true) error=true;
+  } else if(type==='application' && ['school_cleared','hospital_cleared'].includes(field) && ['true','false'].includes(value)) {
+    const result=await client.from('applicants').update({[field]:value==='true'}).eq('id',id).select('id');
+    if(result.error || result.data?.length!==1) error=true;
+  } else if(type==='lead' && field==='status' && ['new','contacted','closed'].includes(value)) {
+    const result=await client.from('leads').update({status:value}).eq('id',id).select('id');
+    if(result.error || result.data?.length!==1) error=true;
+  } else return;
   if(error) redirect('/owner?error=update');
   revalidatePath('/owner');
 }

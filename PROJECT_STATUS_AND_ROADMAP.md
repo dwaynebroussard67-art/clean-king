@@ -1,5 +1,6 @@
 # Project status, changes, and road to the end goal
 
+> Historical snapshot. For subsequent changes, current test results and remaining launch blockers, see [PRODUCTION_READINESS_PROGRESS.md](PRODUCTION_READINESS_PROGRESS.md).
 **Snapshot:** 17 November 2026
 **Project:** Goodwork placeholder / cleaning-business platform
 **Baseline:** main at `93cf788642e1fb5da428c6c6b81a958f93532607` (PR #3); this document describes the changes prepared for the next merge.
@@ -63,7 +64,7 @@ The milestones are ordered to preserve existing work and prove connected workflo
 
 ### 1. Secure synthetic-data staging — **foundation exists; not complete**
 
-- Select and authorize a dedicated test Supabase project and staging deployment; do not use an unrelated project. Apply all five migrations **in timestamp order**, including the experience migration even when referrals are off.
+- Select and authorize a dedicated test Supabase project and staging deployment; do not use an unrelated project. Apply all migrations **in timestamp order**, including the experience migration even when referrals are off.
 - Resolve dependency advisories; establish secure owner and employee identity, passkeys/approved devices for privileged users, access revocation, RLS and service-role boundaries. Add WAF/rate limits, privacy/retention/deletion procedures, backups/restore and monitoring.
 - Configure Turnstile and email only for approved synthetic tests. Recipient and sender remain placeholders until provided and verified.
 - **Exit proof:** documented staging setup, real-provider integration tests for authorization and failure recovery, security review, operational runbook and rollback. No real applicant or facility data before approval.

@@ -1,5 +1,6 @@
 # Red-team review and production roadmap
 
+> Historical snapshot. For subsequent changes, current test results and remaining launch blockers, see [PRODUCTION_READINESS_PROGRESS.md](PRODUCTION_READINESS_PROGRESS.md).
 **Review date:** 17 November 2026
 **Scope:** Repository and local build, dossier comparison, security and workflow review, desktop/mobile browser smoke tests, and selected automated accessibility checks. No production deployment, external account changes, penetration test, live provider integration, or real user data were used.
 
