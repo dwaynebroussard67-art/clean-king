@@ -29,3 +29,12 @@ test('worker records failure, stops on lost lease and caps batches',async()=>{
  result=await processQueue({claim:async()=>{throw new Error('db')},deliver:async()=>true,finish:async()=>true});assert.deepEqual(result,{processed:0,errors:1});
  result=await processQueue({claim:async()=>null,deliver:async()=>true,finish:async()=>true});assert.deepEqual(result,{processed:0,errors:0});
 });
+
+test('scheduler reports unhealthy until persistent failures and stale backlog are resolved',async()=>{
+ const {notificationWorkerStatus}=await import('../lib/notifications.mjs');
+ const ok={configured:true,errors:0},healthy={configured:true,failed:0,overdue:0};
+ assert.equal(notificationWorkerStatus(ok,healthy),200);
+ for(const health of [{...healthy,failed:1},{...healthy,overdue:1},{configured:false},null]) assert.equal(notificationWorkerStatus(ok,health),503);
+ assert.equal(notificationWorkerStatus({...ok,errors:1},healthy),503);
+ assert.equal(notificationWorkerStatus({configured:false,errors:0},healthy),503);
+});

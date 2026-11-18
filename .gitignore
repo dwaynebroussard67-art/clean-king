@@ -4,3 +4,6 @@ out
 .env*
 !.env.example
 coverage
+.cache
+playwright-report
+test-results

@@ -25,7 +25,7 @@ async function snapshot(client){
 export async function POST(request){
   const config=assistantConfig(process.env);
   if(!config || !ownerLoginEnabled())return reply({error:'Assistant is not configured.'},503);
-  if(request.headers.get('origin')!==process.env.APP_ORIGIN || !request.headers.get('content-type')?.toLowerCase().startsWith('application/json'))return reply({error:'Request rejected.'},403);
+  if(request.headers.get('origin')!==process.env.APP_ORIGIN || request.headers.get('content-type')?.split(';',1)[0].trim().toLowerCase()!=='application/json')return reply({error:'Request rejected.'},403);
   if(Number(request.headers.get('content-length')||0)>8192)return reply({error:'Request too large.'},413);
   let input;try{input=validMessage(await readBody(request))}catch{return reply({error:'Invalid request.'},400)}
   if(!input)return reply({error:'Invalid message.'},400);

@@ -1,5 +1,6 @@
 # Dossier implementation map and phased plan
 
+> Historical snapshot. For subsequent changes, current test results and remaining launch blockers, see [PRODUCTION_READINESS_PROGRESS.md](PRODUCTION_READINESS_PROGRESS.md).
 Updated 17 November 2026. This maps the new operational/referral dossier and the requested **optional 30-second video introduction** against the current repository. It does not replace the original `Build Dossier`; both inform the roadmap. Nothing in this document means the product is approved for real data.
 
 ## Status definitions
@@ -15,7 +16,7 @@ Updated 17 November 2026. This maps the new operational/referral dossier and the
 | Dossier area | Status | Current evidence and gap |
 |---|---|---|
 | Public/mobile and business dashboard | Present, not connected; production dashboard requires replacement | `app/ui.js` uses fictional data and in-memory state. Production must use authenticated, authorized persisted records and must never display invented numbers as real. |
-| Owner authentication and permissions | Partial; interim sign-in requires replacement | Owner membership, RLS and development email-link access exist (`app/owner`, `middleware.js`, migrations). Passkeys, approved devices, MFA/step-up, lifecycle and live verification are absent. |
+| Owner authentication and permissions | Partial; interim sign-in requires replacement | Owner membership, RLS and development email-link access exist (`app/owner`, `proxy.js`, migrations). Passkeys, approved devices, MFA/step-up, lifecycle and live verification are absent. |
 | Managers/supervisors | Missing | No delegated permission model, approval or manager account. |
 | Employee accounts | Partial; interim sign-in requires replacement | Referral prototype has administrator-enrolled active employee membership and development sign-in only. No production activation, onboarding, account recovery or worker portal. |
 | Employee invitations and sharing | Partial | `app/crew/referrals` generates a high-entropy one-use, seven-day code and link, with a ten/day limit and native share/copy. Disabled by default; no revocation interface, general campaign links or live two-device test. |
@@ -26,8 +27,8 @@ Updated 17 November 2026. This maps the new operational/referral dossier and the
 | Applicant identity/consent | Partial | Self-entered name/phone and browser autofill exist; referral code does not access personal information. No identity-provider consent, granular permissions, last name, email, withdrawal flow or source/version audit. Optional text-message consent is recorded. |
 | Short progressive application, experience questionnaire, review and resume | Partial | Mobile form now offers optional job-related experience questions and review/edit before submission, with server validation and persistence in the existing applicant record. No save/resume, configurable questions or application-start timestamp. Legal/work-authorization questions require review before being collected. |
 | Optional 30-second video introduction | Missing; marked coming soon | No recording, upload, storage, viewing or deletion exists. Application does not depend on video. Requirements and safety gates are below. |
-| Applicant management/hiring stages | Partial | Owner inbox can set limited statuses and manual eligibility, with audit; not the full stage model, notes, interviews, requests, applicant communications or real onboarding. |
-| Onboarding and employee record | Missing | No account activation, employment document storage, transfers, onboarding tasks, identity lifecycle or emergency contacts. |
+| Applicant management/hiring stages | Partial | Owner inbox can set limited statuses and manual eligibility, with audit. A development-only atomic owner action starts an onboarding preparation record; it does not create an account, assign training or schedule a shift. Full stages, interviews, requests and communications remain missing. |
+| Onboarding and employee record | Partial | Owner-only preparation record and manual planning notes exist locally. No active employee record/account, activation, employment document storage, actual training assignment, identity lifecycle or emergency contacts. |
 | Training/qualifications | Present, not connected | Lessons are simulated clicks. No content management, verified completion, assessments, qualifications, renewal or real assignment restrictions. |
 | Scheduling, coverage and worker notifications | Present, not connected | Bench simulates eligibility; no persistent schedules, atomic offer/claim, conflict/travel detection, actual texts, quiet hours, consent handling or escalation. |
 | Site guides/maps | Present, not connected | Fictional public sample only; no assigned-worker authorization, real maps or directions, private files or approved access window. |
