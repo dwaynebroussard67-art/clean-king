@@ -2,7 +2,7 @@ import { NextResponse, after } from 'next/server';
 import { processApplicationNotifications } from '../../../lib/server/application-notifications';
 import { createHash } from 'node:crypto';
 import { parseIntake, toRow } from '../../../lib/intake.mjs';
-import { adminClient, intakeConfig } from '../../../lib/server/supabase';
+import { adminClient, intakeConfig, referralsEnabled } from '../../../lib/server/supabase';
 
 export const runtime = 'nodejs';
 const fail = (status, error) => NextResponse.json({ error }, { status, headers: { 'Cache-Control': 'no-store' } });
@@ -30,6 +30,7 @@ export async function POST(request) {
   } catch { return fail(400, 'Invalid request.'); }
   const input = parseIntake(raw);
   if (!input) return fail(400, 'Please check the form fields.');
+  if (input.kind === 'application' && input.data.referralCode && !referralsEnabled()) return fail(503, 'Referral invitations are not available.');
   try {
     const verification = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, cache: 'no-store',
@@ -42,7 +43,16 @@ export async function POST(request) {
     if (!client) return fail(503, 'Intake is not configured.');
     const table = input.kind === 'application' ? 'applicants' : 'leads';
     const requestHash = createHash('sha256').update(JSON.stringify({ kind: input.kind, formLanguage: input.formLanguage, data: input.data })).digest('hex');
-    const { error } = await client.from(table).insert({ ...toRow(input), request_hash: requestHash });
+    const row = { ...toRow(input), request_hash: requestHash };
+    let error;
+    if (input.kind === 'application' && input.data.referralCode) {
+      const codeHash = createHash('sha256').update(input.data.referralCode).digest('hex');
+      const result = await client.rpc('submit_referred_application', { p_row: row, p_code_hash: codeHash });
+      if (result.error) return fail(503, 'Could not save your request. Please try again.');
+      if (result.data === 'invalid') return fail(422, 'Invitation is invalid, expired or already used.');
+      if (result.data === 'conflict') return fail(409, 'This submission conflicts with an earlier request. Please reload the form.');
+      if (!['inserted', 'duplicate'].includes(result.data)) return fail(503, 'Could not save your request. Please try again.');
+    } else { ({ error } = await client.from(table).insert(row)); }
     if (error?.code === '23505') {
       // A retry is successful only if the stored submission has the same content.
       const { data: existing, error: lookupError } = await client.from(table).select('request_hash').eq('request_id', input.requestId).maybeSingle();
