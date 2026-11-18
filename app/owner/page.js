@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import PublicHeader from '../public/header';
+import { OwnerHeader as PublicHeader } from './demo-banner';
 import { ownerLoginEnabled, sessionClient } from '../../lib/server/supabase';
 import { updateIntake, signOut } from './actions';
 import { beforeFilter,decodeCursor,encodeCursor,ownerPageLink } from '../../lib/pagination.mjs';
