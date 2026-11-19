@@ -69,10 +69,21 @@ test('strict settings validation rejects malformed, out-of-range, and unknown va
   }
 });
 
+test('validation errors are bilingual and do not reflect attacker-controlled key names', () => {
+  const input = valid();
+  Object.defineProperty(input, 'private-applicant-field', {
+    value: 'must not be reflected', enumerable: true, configurable: true,
+  });
+  const parsed = parseSettings(input);
+  assert.equal(parsed.ok, false);
+  assert.doesNotMatch(JSON.stringify(parsed.errors), /private-applicant-field|must not be reflected/);
+  assert.match(parsed.errors[0].message, / \/ /);
+});
+
 test('valid boundaries are accepted and trimmed names are returned', () => {
   const settings = valid();
   settings.persona.name = '  Sparkle  ';
-  settings.persona.ownerName = '  Andy  ';
+  settings.persona.ownerName = '  Owner  ';
   settings.voice.rate = 0.5;
   settings.voice.pitch = 2;
   settings.provider.customModel = 'model-1';
@@ -83,5 +94,5 @@ test('valid boundaries are accepted and trimmed names are returned', () => {
   const parsed = parseSettings(settings);
   assert.equal(parsed.ok, true);
   assert.equal(parsed.value.persona.name, 'Sparkle');
-  assert.equal(parsed.value.persona.ownerName, 'Andy');
+  assert.equal(parsed.value.persona.ownerName, 'Owner');
 });

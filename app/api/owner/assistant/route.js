@@ -5,7 +5,7 @@ import { createOwnerAssistantHandler } from '../../../../lib/server/owner-assist
 import { loadSnapshot } from '../../../../lib/server/assistant-snapshot.mjs';
 import { createSettingsStore } from '../../../../lib/server/assistant-settings-store.mjs';
 import { secretKeyValid } from '../../../../lib/server/secret-box.mjs';
-import { adminClient, ownerLoginEnabled, sessionClient } from '../../../../lib/server/supabase.js';
+import { ownerLoginEnabled, sessionClient } from '../../../../lib/server/supabase.js';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -17,8 +17,8 @@ const handle = createOwnerAssistantHandler({
   env,
   ownerLoginEnabled: () => ownerLoginEnabled() && secretKeyValid(process.env.ASSISTANT_SECRET_KEY),
   getSessionClient: sessionClient,
-  loadSettings: async (_session, user) => settingsStore(user).load(),
-  getSecret: async (_session, user, name) => settingsStore(user).getSecretPlain(name),
+  loadSettings: async (session) => settingsStore(session).load(),
+  getSecret: async (session, _user, name) => settingsStore(session).getSecretPlain(name),
   loadSnapshot,
   beginRun: async (session) => {
     const { data, error } = await session.rpc('begin_assistant_run');
@@ -41,13 +41,11 @@ const handle = createOwnerAssistantHandler({
   ),
 });
 
-function settingsStore(user) {
-  const client = adminClient();
+function settingsStore(client) {
   if (!client) throw new Error('settings_store_not_configured');
   return createSettingsStore({
     client,
     secretKey: process.env.ASSISTANT_SECRET_KEY,
-    ownerId: user.id,
   });
 }
 

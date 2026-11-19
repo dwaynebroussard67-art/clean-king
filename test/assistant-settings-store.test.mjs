@@ -5,14 +5,11 @@ import { DEFAULT_SETTINGS } from '../lib/assistant-settings-schema.mjs';
 import { createSettingsStore } from '../lib/server/assistant-settings-store.mjs';
 
 const key = Buffer.alloc(32, 4).toString('base64');
-const ownerId = '11111111-1111-4111-8111-111111111111';
-
 function fakeClient() {
   const state = { settings: null, version: 0, secrets: new Map(), audit: [] };
   return {
     state,
     async rpc(name, args = {}) {
-      if (args.p_owner_id !== ownerId) return { data: null, error: new Error('not owner') };
       if (name === 'get_assistant_settings') {
         return { data: state.settings ? [{ settings: state.settings, version: state.version }] : [], error: null };
       }
@@ -46,7 +43,7 @@ function fakeClient() {
 
 test('settings store defaults, saves optimistically, and reports conflicts', async () => {
   const client = fakeClient();
-  const store = createSettingsStore({ client, secretKey: key, ownerId });
+  const store = createSettingsStore({ client, secretKey: key });
   assert.deepEqual(await store.load(), { settings: DEFAULT_SETTINGS, version: 0 });
   const updated = structuredClone(DEFAULT_SETTINGS);
   updated.enabled = true;
@@ -57,7 +54,7 @@ test('settings store defaults, saves optimistically, and reports conflicts', asy
 
 test('store encrypts secret values and returns only status to the caller', async () => {
   const client = fakeClient();
-  const store = createSettingsStore({ client, secretKey: key, ownerId });
+  const store = createSettingsStore({ client, secretKey: key });
   assert.equal(await store.setSecret('anthropic', 'anthropic-test-key-1234'), true);
   const row = client.state.secrets.get('anthropic');
   assert.match(row.ciphertext, /^v1:/);
@@ -73,19 +70,37 @@ test('store encrypts secret values and returns only status to the caller', async
 });
 
 test('secret writes and reads fail closed when encryption is unavailable', async () => {
-  const store = createSettingsStore({ client: fakeClient(), secretKey: 'bad', ownerId });
+  const store = createSettingsStore({ client: fakeClient(), secretKey: 'bad' });
   await assert.rejects(store.setSecret('custom', 'custom-key-1234'), { message: 'encryption_not_ready' });
   await assert.rejects(store.getSecretPlain('custom'), { message: 'encryption_not_ready' });
 });
 
+test('store hides RPC/network diagnostics and rejects malformed response shapes', async () => {
+  const broken = createSettingsStore({
+    client: { async rpc() { throw new Error('synthetic-sensitive-database-detail'); } },
+    secretKey: key,
+  });
+  await assert.rejects(broken.load(), (error) => {
+    assert.equal(error.message, 'settings_store_failed');
+    assert.equal(error.cause, undefined);
+    assert.doesNotMatch(String(error), /synthetic-sensitive/);
+    return true;
+  });
+
+  const malformed = createSettingsStore({
+    client: { async rpc() { return { data: { settings: DEFAULT_SETTINGS, version: 1 }, error: null }; } },
+    secretKey: key,
+  });
+  await assert.rejects(malformed.load(), { message: 'settings_store_failed' });
+});
+
 test('key rotation leaves only last-four status and directs owners to re-enter unreadable secrets', async () => {
   const client = fakeClient();
-  const original = createSettingsStore({ client, secretKey: key, ownerId });
+  const original = createSettingsStore({ client, secretKey: key });
   await original.setSecret('custom', 'custom-key-rotation-1234');
   const rotated = createSettingsStore({
     client,
     secretKey: Buffer.alloc(32, 5).toString('base64'),
-    ownerId,
   });
   assert.deepEqual((await rotated.secretStatus()).custom, { set: true, last4: '1234' });
   await assert.rejects(rotated.getSecretPlain('custom'), { message: 'secret_decrypt_failed' });

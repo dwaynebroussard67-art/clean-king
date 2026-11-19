@@ -1,106 +1,147 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { readFile, readdir } from 'node:fs/promises';
 import { PGlite } from '@electric-sql/pglite';
+import { DEFAULT_SETTINGS } from '../lib/assistant-settings-schema.mjs';
+import { decryptSecret, encryptSecret, lastFour } from '../lib/server/secret-box.mjs';
 
 const OWNER = '11111111-1111-4111-8111-111111111111';
 const STRANGER = '22222222-2222-4222-8222-222222222222';
-const DEFAULTS = {
-  version: 1,
-  enabled: false,
-  persona: { name: 'Assistant', ownerName: 'Owner', tone: 'friendly', emoji: 'light', length: 'short' },
-  voice: { speakReplies: false, rate: 1, pitch: 1, voiceName: null },
-  capabilities: { counts: true, emailHealth: true },
-  provider: { active: 'anthropic', anthropicModel: 'claude-sonnet-5-5', customBaseUrl: '', customModel: '', fallbackToCustom: false },
-  limits: { perMinute: 3, perMonth: 100, maxOutputTokens: 400, temperature: 0.4 },
-};
+const KEY = Buffer.alloc(32, 15).toString('base64');
+const SECRET = 'synthetic-provider-key-8ZQK';
+const BOX = encryptSecret(SECRET, KEY);
+const LAST4 = lastFour(SECRET);
+const DENIED = { code: '42501' };
 
-async function setup() {
+async function database() {
   const db = new PGlite();
-  await db.exec(`create role anon; create role authenticated; create role service_role bypassrls;
-    create schema auth; create table auth.users(id uuid primary key);
+  await db.exec(`
+    create role anon;
+    create role authenticated;
+    create role service_role bypassrls;
+    create schema auth;
+    create table auth.users(id uuid primary key);
     create function auth.uid() returns uuid language sql stable as $$
-      select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;
-    grant usage on schema auth to authenticated, anon;
-    grant execute on function auth.uid() to authenticated, anon;`);
-  const foundation = (await readFile(new URL('../supabase/migrations/20261117000000_intake_foundation.sql', import.meta.url), 'utf8'))
-    .replace('create extension if not exists pgcrypto;', '');
-  await db.exec(foundation);
-  await db.exec(await readFile(new URL('../supabase/migrations/20261117020000_assistant_usage.sql', import.meta.url), 'utf8'));
-  await db.exec(await readFile(new URL('../supabase/migrations/20261118000000_assistant_settings.sql', import.meta.url), 'utf8'));
-  await db.exec(await readFile(new URL('../supabase/migrations/20261118010000_assistant_quota_settings.sql', import.meta.url), 'utf8'));
-  await db.exec(`insert into auth.users values ('${OWNER}'), ('${STRANGER}');
-    insert into public.owner_memberships(user_id) values ('${OWNER}');`);
+      select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid;
+    $$;
+    grant usage on schema auth to anon, authenticated, service_role;
+    grant execute on function auth.uid() to anon, authenticated, service_role;
+    alter default privileges in schema public grant all on tables to anon, authenticated, service_role;
+    alter default privileges in schema public grant all on sequences to anon, authenticated, service_role;
+    alter default privileges in schema public grant execute on functions to anon, authenticated, service_role;
+  `);
+  const migrations = new URL('../supabase/migrations/', import.meta.url);
+  const files = (await readdir(migrations)).filter((name) => name.endsWith('.sql')).sort();
+  for (const file of files) {
+    const sql = await readFile(new URL(file, migrations), 'utf8');
+    await db.exec(sql.replace('create extension if not exists pgcrypto;', ''));
+  }
+  await db.query('insert into auth.users (id) values ($1), ($2)', [OWNER, STRANGER]);
+  await db.query('insert into public.owner_memberships (user_id) values ($1)', [OWNER]);
   return db;
 }
 
-test('assistant settings and secret RPCs are server-only; owner settings save is optimistic', async () => {
-  const db = await setup();
+async function asRole(db, role, userId = '') {
+  await db.exec('reset role');
+  await db.query("select set_config('request.jwt.claim.sub', $1, false)", [userId]);
+  await db.exec(`set role ${role}`);
+}
+
+async function one(db, sql, params = []) {
+  return (await db.query(sql, params)).rows[0];
+}
+
+async function save(db, settings, version) {
+  return one(db, 'select * from public.save_assistant_settings($1::jsonb, $2)', [JSON.stringify(settings), version]);
+}
+
+async function begin(db) {
+  return one(db, 'select * from public.begin_assistant_run()');
+}
+
+test('assistant settings and secret RPCs are owner-only; errors and audit are content-free', async () => {
+  const db = await database();
   try {
     await db.exec('set role anon');
-    await assert.rejects(db.query('select * from public.assistant_settings'));
-    await assert.rejects(db.query('select * from public.get_assistant_settings($1)', [OWNER]));
-    await db.exec('reset role; set role authenticated');
-    await db.exec(`select set_config('request.jwt.claim.sub','${STRANGER}',false)`);
-    await assert.rejects(db.query('select * from public.assistant_settings'));
-    await assert.rejects(db.query('select * from public.get_assistant_secret($1,$2)', [OWNER, 'anthropic']));
-    await assert.rejects(db.query('select * from public.set_assistant_secret($1,$2,$3,$4)', [OWNER, 'anthropic', 'v1:a:b:c', null]));
+    await assert.rejects(db.query('select * from public.get_assistant_settings()'), DENIED);
+    await assert.rejects(db.query('select * from public.assistant_settings'), DENIED);
 
-    await db.exec('reset role; set role service_role');
-    const saved = await db.query('select * from public.save_assistant_settings($1,$2::jsonb,0)', [OWNER, JSON.stringify(DEFAULTS)]);
-    assert.deepEqual(saved.rows[0], { result: 'ok', version: 1 });
-    const conflict = await db.query('select * from public.save_assistant_settings($1,$2::jsonb,0)', [OWNER, JSON.stringify(DEFAULTS)]);
-    assert.deepEqual(conflict.rows[0], { result: 'conflict', version: 1 });
-    const invalid = structuredClone(DEFAULTS);
-    invalid.limits.perMinute = 0;
-    assert.equal((await db.query('select * from public.save_assistant_settings($1,$2::jsonb,1)', [OWNER, JSON.stringify(invalid)])).rows[0].result, 'invalid');
+    await asRole(db, 'authenticated', STRANGER);
+    await assert.rejects(db.query('select * from public.get_assistant_settings()'), DENIED);
+    assert.deepEqual((await db.query('select * from public.assistant_settings_audit')).rows, []);
+    await assert.rejects(db.query('select * from public.get_assistant_secret($1)', ['anthropic']), DENIED);
 
-    const envelope = 'v1:AAAAAAAAAAAAAAAA:AAAAAAAAAAAAAAAAAAAAAA==:YWJjZGVmZ2g=';
-    assert.equal((await db.query('select public.set_assistant_secret($1,$2,$3,$4) as ok', [OWNER, 'anthropic', envelope, '5678'])).rows[0].ok, true);
-    const fetched = await db.query('select * from public.get_assistant_secret($1,$2)', [OWNER, 'anthropic']);
-    assert.equal(fetched.rows[0].ciphertext, envelope);
-    assert.equal(fetched.rows[0].last4, '5678');
+    await asRole(db, 'authenticated', OWNER);
+    assert.deepEqual((await db.query('select * from public.get_assistant_settings()')).rows, []);
+    assert.deepEqual(await save(db, DEFAULT_SETTINGS, 1), { result: 'conflict', version: 0 });
+    assert.deepEqual(await save(db, DEFAULT_SETTINGS, 0), { result: 'ok', version: 1 });
+    assert.deepEqual(await one(db, 'select * from public.get_assistant_settings()'), {
+      settings: DEFAULT_SETTINGS, version: 1,
+    });
+    for (const invalid of [
+      null,
+      { ...DEFAULT_SETTINGS, unknown: 'synthetic-sensitive-field' },
+      { ...DEFAULT_SETTINGS, limits: { ...DEFAULT_SETTINGS.limits, perMinute: 0 } },
+      { ...DEFAULT_SETTINGS, provider: { ...DEFAULT_SETTINGS.provider, customBaseUrl: 'http://invalid.example' } },
+    ]) assert.equal((await save(db, invalid, 1)).result, 'invalid');
+
+    assert.equal((await one(db, 'select public.set_assistant_secret($1,$2,$3) as ok', ['anthropic', SECRET, LAST4])).ok, false);
+    assert.equal((await one(db, 'select public.set_assistant_secret($1,$2,$3) as ok', ['anthropic', BOX, SECRET])).ok, false);
+    assert.equal((await one(db, 'select public.set_assistant_secret($1,$2,$3) as ok', ['anthropic', BOX, LAST4])).ok, true);
+    const stored = await one(db, 'select * from public.get_assistant_secret($1)', ['anthropic']);
+    assert.deepEqual(stored, { ciphertext: BOX, last4: LAST4 });
+    assert.equal(decryptSecret(stored.ciphertext, KEY), SECRET);
+    await assert.rejects(db.query('select * from public.assistant_secrets'), DENIED);
+
     const audit = await db.query('select action, changed_keys, secret_name from public.assistant_settings_audit order by id');
-    assert.equal(audit.rows.length, 2);
-    assert.deepEqual(audit.rows[1], { action: 'secret_set', changed_keys: [], secret_name: 'anthropic' });
-    assert.doesNotMatch(JSON.stringify(audit.rows), /YWJjZGVmZ2g|5678/);
-    assert.equal((await db.query('select public.clear_assistant_secret($1,$2) as ok', [OWNER, 'anthropic'])).rows[0].ok, true);
+    assert.deepEqual(audit.rows, [
+      { action: 'settings_saved', changed_keys: ['enabled', 'limits', 'persona', 'provider', 'version', 'capabilities', 'voice'].sort(), secret_name: null },
+      { action: 'secret_set', changed_keys: [], secret_name: 'anthropic' },
+    ]);
+    assert.doesNotMatch(JSON.stringify(audit.rows), /synthetic-provider-key|8ZQK|v1:/);
+    assert.equal((await one(db, 'select public.clear_assistant_secret($1) as ok', ['anthropic'])).ok, true);
+    assert.deepEqual((await db.query('select * from public.get_assistant_secret($1)', ['anthropic'])).rows, []);
+
+    await asRole(db, 'service_role');
+    await assert.rejects(db.query('select * from public.get_assistant_settings()'), DENIED);
+    await assert.rejects(db.query('select * from public.assistant_settings'), DENIED);
   } finally {
     await db.close();
   }
 });
 
-test('assistant quota is owner-only, reads saved limits, and has no caller-supplied overload', async () => {
-  const db = await setup();
+test('assistant quota reads saved limits and cannot accept caller-selected limits', async () => {
+  const db = await database();
   try {
     await db.exec('set role anon');
-    await assert.rejects(db.query('select * from public.begin_assistant_run()'));
-    await db.exec(`reset role; set role authenticated; select set_config('request.jwt.claim.sub','${STRANGER}',false);`);
-    await assert.rejects(db.query('select * from public.begin_assistant_run()'));
-    assert.equal((await db.query('select count(*)::int as n from public.assistant_runs')).rows[0].n, 0);
+    await assert.rejects(begin(db), DENIED);
+    await asRole(db, 'authenticated', STRANGER);
+    await assert.rejects(begin(db), DENIED);
 
-    await db.exec(`select set_config('request.jwt.claim.sub','${OWNER}',false)`);
-    for (let index = 0; index < 3; index += 1) {
-      assert.equal((await db.query('select * from public.begin_assistant_run()')).rows[0].result, 'ok');
-    }
-    assert.equal((await db.query('select * from public.begin_assistant_run()')).rows[0].result, 'rate_limit');
-    await assert.rejects(db.query('select * from public.begin_assistant_run(10,1000)'));
-    await assert.rejects(db.query('delete from public.assistant_runs'));
+    await asRole(db, 'authenticated', OWNER);
+    for (let index = 0; index < 3; index += 1) assert.equal((await begin(db)).result, 'ok');
+    assert.deepEqual(await begin(db), { run_id: null, result: 'rate_limit' });
+    await assert.rejects(db.query('select * from public.begin_assistant_run(10, 1000)'));
 
-    await db.exec(`reset role; update public.assistant_runs set created_at=now()-interval '2 minutes'; set role service_role;`);
-    const restricted = structuredClone(DEFAULTS);
-    restricted.limits.perMinute = 1;
-    const saved = await db.query('select * from public.save_assistant_settings($1,$2::jsonb,0)', [OWNER, JSON.stringify(restricted)]);
-    assert.deepEqual(saved.rows[0], { result: 'ok', version: 1 });
-    await db.exec(`reset role; set role authenticated; select set_config('request.jwt.claim.sub','${OWNER}',false);`);
-    assert.equal((await db.query('select * from public.begin_assistant_run()')).rows[0].result, 'ok');
-    assert.equal((await db.query('select * from public.begin_assistant_run()')).rows[0].result, 'rate_limit');
+    const settings = structuredClone(DEFAULT_SETTINGS);
+    settings.limits.perMinute = 1;
+    settings.limits.perMonth = 2;
+    assert.deepEqual(await save(db, settings, 0), { result: 'ok', version: 1 });
+    await db.exec('reset role; update public.assistant_runs set created_at = now() - interval \'2 months\';');
+    await asRole(db, 'authenticated', OWNER);
+    const first = await begin(db);
+    assert.equal(first.result, 'ok');
+    assert.equal((await begin(db)).result, 'rate_limit');
+    assert.equal((await one(db, 'select public.finish_assistant_run($1,$2) as ok', [first.run_id, true])).ok, true);
+    await db.exec('reset role; update public.assistant_runs set created_at = now() - interval \'2 minutes\';');
 
-    await db.exec(`reset role; update public.assistant_runs set created_at=now()-interval '2 minutes';
-      insert into public.assistant_runs(owner_id,created_at)
-      select '${OWNER}', now()-interval '2 minutes' from generate_series(1,96);
-      set role authenticated; select set_config('request.jwt.claim.sub','${OWNER}',false);`);
-    assert.equal((await db.query('select * from public.begin_assistant_run()')).rows[0].result, 'monthly_limit');
+    settings.limits.perMinute = 10;
+    settings.limits.perMonth = 1;
+    await asRole(db, 'authenticated', OWNER);
+    assert.deepEqual(await save(db, settings, 1), { result: 'ok', version: 2 });
+    assert.equal((await begin(db)).result, 'monthly_limit');
+    await asRole(db, 'service_role');
+    await assert.rejects(begin(db), DENIED);
   } finally {
     await db.close();
   }
