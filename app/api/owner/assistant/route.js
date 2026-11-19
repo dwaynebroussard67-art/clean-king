@@ -34,6 +34,7 @@ const handle = createOwnerAssistantHandler({
   },
   callProvider,
   validateCustomBaseUrl,
+  logProvider: ({ provider, model }) => console.info('owner-assistant-provider', provider, model),
   buildSystemPrompt: (settings, language, snapshot) => buildSystemPrompt(
     settingsForPrompt(settings),
     { language, snapshot },

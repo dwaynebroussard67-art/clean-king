@@ -26,6 +26,7 @@ function setup(overrides = {}) {
     finish: [],
     snapshotCalls: [],
     providerResults: [],
+    logs: [],
   };
   Object.assign(state, overrides);
   const session = {
@@ -60,6 +61,7 @@ function setup(overrides = {}) {
       return result ?? { text: 'A safe answer.', provider: params.provider, model: params.model };
     },
     buildSystemPrompt: (settings, language, snapshot) => JSON.stringify({ settings, language, snapshot }),
+    logProvider: (metadata) => state.logs.push(metadata),
   });
   return { handler, state };
 }
@@ -93,6 +95,8 @@ test('assistant route honors saved provider, persona capabilities, limits, histo
   assert.equal(state.calls[0].provider, 'anthropic');
   assert.equal(state.finish[0][0], 'run-1');
   assert.equal(state.finish[0][1], true);
+  assert.deepEqual(state.logs, [{ provider: 'anthropic', model: 'claude-sonnet-5-5' }]);
+  assert.doesNotMatch(JSON.stringify(state.logs), /Summarize this|provider-secret-never-return-this|A safe answer/);
   assert.doesNotMatch(JSON.stringify(body), /provider-secret-never-return-this/);
 });
 

@@ -93,7 +93,7 @@ test('custom OpenAI-compatible request shape and response parsing are exact', as
       ...messages,
     ],
   });
-  assert.equal(request.init.redirect, 'manual');
+  assert.equal(request.init.redirect, 'error');
   assert.deepEqual(result, {
     text: 'Custom answer.',
     provider: 'custom',
