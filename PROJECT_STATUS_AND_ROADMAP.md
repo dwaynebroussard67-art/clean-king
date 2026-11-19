@@ -51,7 +51,7 @@ Existing foundations from previous work are retained rather than rebuilt: the fi
 | **Site directions and floor plans** | Public fictional interactive preview; real maps/directions marked coming soon. | Client-approved information, server-checked active assignment/eligibility and time window, private no-store document access, versioning/review and restricted distribution for sensitive facilities. |
 | **Job completion** | Missing. | Task/checklist and issue reporting, recorded start/finish where approved, and separate employee-reported, supervisor-verified and customer-confirmed states. |
 | **Customer and quotes** | Disabled quote-intake and owner inbox foundation. | Customer records, inquiry follow-up, authorized estimate creation/sending, explicit acceptance, scheduling and customer updates; no quote is a contract until approved. |
-| **Applicant email to Andy** | Disabled durable outbox and bounded retry worker; recipient intentionally blank. | Verified sender and recipient, protected scheduled retry, monitoring/alerts, privacy approval and end-to-end mailbox delivery testing. Provider acceptance is not proof of delivery. |
+| **Applicant email to owner** | Disabled durable outbox and bounded retry worker; recipient intentionally blank. | Verified sender and recipient, protected scheduled retry, monitoring/alerts, privacy approval and end-to-end mailbox delivery testing. Provider acceptance is not proof of delivery. |
 | **AI assistant** | Demo is scripted. A separate disabled experimental owner-only endpoint can use an AI provider with a typed question and aggregate counts; no tools or actions. | Evidence-backed answers on authorized data, hard spend limits, privacy controls and audited server-authorized tools; consequential actions require owner approval. It must not independently decide whom to hire. |
 | **Security, privacy and operations** | RLS, server-only service keys, owner membership, input checks, audit events and quotas have local tests. Temporary email login is not production security. | Passkeys/approved devices, role permissions, secure employee activation, WAF/rate limiting, retention/deletion, backup/restore, monitoring, incident procedures, accessibility and legal review, plus live provider testing. |
 | **Management, reports and scale** | Mostly missing; current design assumes one business. | Delegated manager roles, reliable job/revenue/labor records and reports, then deliberate organization isolation and configuration before supporting multiple businesses. |
@@ -105,13 +105,13 @@ The milestones are ordered to preserve existing work and prove connected workflo
 - After the single-business system is reliable, add configurable service categories, managers, multiple locations and tenant boundaries. Referral rewards and community/campaign links require explicit policy and audit, not assumptions.
 - **Exit proof:** cross-tenant isolation tests, configuration tests and an operating model for each additional business.
 
-## Decisions and materials needed from Andy
+## Decisions and materials needed from the owner
 
 These can be supplied in stages; **do not put provider secrets in chat or source control**.
 
 1. Approved business name, domain, service area, services, contact details and franchise/brand permissions. “Goodwork” and imagery are placeholders.
 2. An approved **dedicated test** Supabase project and staging/deployment target; who can administer them and permission to configure them. None has been identified as the cleaning business's project yet.
-3. Andy's approved notification email address, verified sender domain, who monitors failures and acceptable applicant/quote response times.
+3. The owner's approved notification email address, verified sender domain, who monitors failures and acceptable applicant/quote response times.
 4. Hiring stages, relevant job questions, referral bonus/correction rules, who can hire and who approves school/hospital eligibility. Confirm actual contractual screening rules and obtain employment/privacy advice.
 5. Training materials and permissions, a Spanish-language reviewer, qualifications and renewal rules; employee availability and shift/coverage/quiet-hour escalation rules.
 6. Site locations, floor plans and supervisor contacts **only when** client permission and secure assigned-worker access are ready. Do not upload sensitive maps to the public demo.
