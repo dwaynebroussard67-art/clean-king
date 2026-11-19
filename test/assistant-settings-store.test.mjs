@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import { DEFAULT_SETTINGS } from '../lib/assistant-settings-schema.mjs';
 import { createSettingsStore } from '../lib/server/assistant-settings-store.mjs';
 
@@ -75,4 +76,20 @@ test('secret writes and reads fail closed when encryption is unavailable', async
   const store = createSettingsStore({ client: fakeClient(), secretKey: 'bad', ownerId });
   await assert.rejects(store.setSecret('custom', 'custom-key-1234'), { message: 'encryption_not_ready' });
   await assert.rejects(store.getSecretPlain('custom'), { message: 'encryption_not_ready' });
+});
+
+test('key rotation leaves only last-four status and directs owners to re-enter unreadable secrets', async () => {
+  const client = fakeClient();
+  const original = createSettingsStore({ client, secretKey: key, ownerId });
+  await original.setSecret('custom', 'custom-key-rotation-1234');
+  const rotated = createSettingsStore({
+    client,
+    secretKey: Buffer.alloc(32, 5).toString('base64'),
+    ownerId,
+  });
+  assert.deepEqual((await rotated.secretStatus()).custom, { set: true, last4: '1234' });
+  await assert.rejects(rotated.getSecretPlain('custom'), { message: 'secret_decrypt_failed' });
+  const page = await readFile(new URL('../app/owner/assistant/settings/page.js', import.meta.url), 'utf8');
+  assert.match(page, /Stored key cannot be read; please re-enter it/);
+  assert.match(page, /change ASSISTANT_SECRET_KEY, then re-enter both provider keys/i);
 });
