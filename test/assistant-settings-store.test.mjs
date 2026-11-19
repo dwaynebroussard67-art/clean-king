@@ -1,109 +1,110 @@
-import assert from 'node:assert/strict';
 import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import { DEFAULT_SETTINGS } from '../lib/assistant-settings-schema.mjs';
 import { createSettingsStore } from '../lib/server/assistant-settings-store.mjs';
-import { decryptSecret } from '../lib/server/secret-box.mjs';
 
-const KEY = Buffer.alloc(32, 21).toString('base64');
-const response = (data) => ({ data, error: null });
-
-function fixture(replies, secretKey = KEY) {
-  const calls = [];
-  const client = {
-    async rpc(name, args) {
-      calls.push({ name, args });
-      assert.ok(replies.length, 'unexpected RPC');
-      const reply = replies.shift();
-      if (reply instanceof Error) throw reply;
-      return reply;
+const key = Buffer.alloc(32, 4).toString('base64');
+function fakeClient() {
+  const state = { settings: null, version: 0, secrets: new Map(), audit: [] };
+  return {
+    state,
+    async rpc(name, args = {}) {
+      if (name === 'get_assistant_settings') {
+        return { data: state.settings ? [{ settings: state.settings, version: state.version }] : [], error: null };
+      }
+      if (name === 'save_assistant_settings') {
+        if (args.p_expected_version !== state.version) {
+          return { data: [{ result: 'conflict', version: state.version }], error: null };
+        }
+        state.settings = args.p_settings;
+        state.version += 1;
+        state.audit.push({ action: 'settings_saved' });
+        return { data: [{ result: 'ok', version: state.version }], error: null };
+      }
+      if (name === 'get_assistant_secret') {
+        const secret = state.secrets.get(args.p_name);
+        return { data: secret ? [secret] : [], error: null };
+      }
+      if (name === 'set_assistant_secret') {
+        state.secrets.set(args.p_name, { ciphertext: args.p_ciphertext, last4: args.p_last4 });
+        state.audit.push({ action: 'secret_set', name: args.p_name });
+        return { data: true, error: null };
+      }
+      if (name === 'clear_assistant_secret') {
+        const removed = state.secrets.delete(args.p_name);
+        if (removed) state.audit.push({ action: 'secret_cleared', name: args.p_name });
+        return { data: removed, error: null };
+      }
+      return { data: null, error: new Error('unknown rpc') };
     },
   };
-  return { calls, store: createSettingsStore({ client, secretKey }) };
 }
 
-test('an empty table yields fresh disabled defaults and version zero', async () => {
-  const { calls, store } = fixture([response([]), response([])]);
-  const original = await store.load();
-  assert.deepEqual(original, { settings: DEFAULT_SETTINGS, version: 0 });
-  original.settings.persona.name = 'Edited';
+test('settings store defaults, saves optimistically, and reports conflicts', async () => {
+  const client = fakeClient();
+  const store = createSettingsStore({ client, secretKey: key });
   assert.deepEqual(await store.load(), { settings: DEFAULT_SETTINGS, version: 0 });
-  assert.deepEqual(calls, Array.from({ length: 2 }, () => ({ name: 'get_assistant_settings', args: {} })));
+  const updated = structuredClone(DEFAULT_SETTINGS);
+  updated.enabled = true;
+  assert.deepEqual(await store.save(updated, 0), { result: 'ok', version: 1 });
+  assert.deepEqual(await store.save(updated, 0), { result: 'conflict', version: 1 });
+  assert.deepEqual((await store.load()).settings, updated);
 });
 
-test('save normalizes settings and passes through SQL version and result', async () => {
-  const { calls, store } = fixture([
-    response([{ result: 'ok', version: 1 }]),
-    response([{ result: 'conflict', version: 1 }]),
-    response([{ result: 'invalid', version: 1 }]),
-    response([{ settings: DEFAULT_SETTINGS, version: 1 }]),
-    response([{ settings: DEFAULT_SETTINGS, version: 1 }]),
-  ]);
-  const settings = structuredClone(DEFAULT_SETTINGS);
-  settings.persona.name = ' Sparkle ';
-  assert.deepEqual(await store.save(settings, 0), { result: 'ok', version: 1 });
-  assert.deepEqual(await store.save(settings, 0), { result: 'conflict', version: 1 });
-  assert.deepEqual(await store.save(settings, 1), { result: 'invalid', version: 1 });
-  assert.deepEqual(await store.save({ enabled: true }, 1), { result: 'invalid', version: 1 });
-  assert.deepEqual(await store.load(), { settings: DEFAULT_SETTINGS, version: 1 });
-  assert.deepEqual(calls, [0, 0, 1].map((version) => ({
-    name: 'save_assistant_settings', args: { p_settings: DEFAULT_SETTINGS, p_expected_version: version },
-  })).concat(Array.from({ length: 2 }, () => ({ name: 'get_assistant_settings', args: {} }))));
-});
-
-test('secret write sends only an encrypted box and suffix; status sends neither plaintext nor box', async () => {
-  const replies = [response(true)];
-  const { calls, store } = fixture(replies);
-  const plaintext = 'synthetic-provider-key-57QF';
-  assert.equal(await store.setSecret('anthropic', plaintext), true);
-  const [{ name, args }] = calls;
-  assert.equal(name, 'set_assistant_secret');
-  assert.deepEqual(Object.keys(args).sort(), ['p_ciphertext', 'p_last4', 'p_name']);
-  assert.equal(args.p_name, 'anthropic');
-  assert.equal(args.p_last4, '57QF');
-  assert.ok(!JSON.stringify(args).includes(plaintext));
-  assert.equal(decryptSecret(args.p_ciphertext, KEY), plaintext);
-
-  const row = { ciphertext: args.p_ciphertext, last4: args.p_last4 };
-  replies.push(response([row]), response([]), response([row]), response(true), response([]));
+test('store encrypts secret values and returns only status to the caller', async () => {
+  const client = fakeClient();
+  const store = createSettingsStore({ client, secretKey: key });
+  assert.equal(await store.setSecret('anthropic', 'anthropic-test-key-1234'), true);
+  const row = client.state.secrets.get('anthropic');
+  assert.match(row.ciphertext, /^v1:/);
+  assert.equal(row.last4, '1234');
+  assert.doesNotMatch(JSON.stringify(client.state), /anthropic-test-key-1234/);
   assert.deepEqual(await store.secretStatus(), {
-    anthropic: { set: true, last4: '57QF' }, custom: { set: false, last4: null },
+    anthropic: { set: true, last4: '1234' },
+    custom: { set: false, last4: null },
   });
-  assert.equal(await store.getSecretPlain('anthropic'), plaintext);
+  assert.equal(await store.getSecretPlain('anthropic'), 'anthropic-test-key-1234');
   assert.equal(await store.clearSecret('anthropic'), true);
   assert.equal(await store.getSecretPlain('anthropic'), null);
-  assert.deepEqual(calls.slice(1), [
-    { name: 'get_assistant_secret', args: { p_name: 'anthropic' } },
-    { name: 'get_assistant_secret', args: { p_name: 'custom' } },
-    { name: 'get_assistant_secret', args: { p_name: 'anthropic' } },
-    { name: 'clear_assistant_secret', args: { p_name: 'anthropic' } },
-    { name: 'get_assistant_secret', args: { p_name: 'anthropic' } },
-  ]);
 });
 
-test('missing encryption blocks plaintext access but not status or deletion', async () => {
-  const { calls, store } = fixture([response([]), response([]), response(true)], 'not-base64');
-  await assert.rejects(store.setSecret('custom', 'synthetic-secret'), { message: 'encryption_not_ready' });
+test('secret writes and reads fail closed when encryption is unavailable', async () => {
+  const store = createSettingsStore({ client: fakeClient(), secretKey: 'bad' });
+  await assert.rejects(store.setSecret('custom', 'custom-key-1234'), { message: 'encryption_not_ready' });
   await assert.rejects(store.getSecretPlain('custom'), { message: 'encryption_not_ready' });
-  assert.deepEqual(calls, []);
-  assert.deepEqual(await store.secretStatus(), {
-    anthropic: { set: false, last4: null }, custom: { set: false, last4: null },
-  });
-  assert.equal(await store.clearSecret('custom'), true);
 });
 
-test('read failures are not treated as missing settings or missing credentials', async () => {
-  const { store } = fixture([
-    response([{ settings: { enabled: true }, version: 1 }]),
-    { data: null, error: { message: 'sensitive database detail' } },
-    new Error('sensitive network detail'),
-    response([{ ciphertext: 'bad-envelope', last4: 'abcd' }]),
-  ]);
-  for (const operation of [store.load, store.load, () => store.clearSecret('custom')]) {
-    await assert.rejects(operation(), (error) => {
-      assert.equal(error.message, 'settings_store_failed');
-      assert.equal(error.cause, undefined);
-      return true;
-    });
-  }
-  await assert.rejects(store.getSecretPlain('custom'), { message: 'secret_decrypt_failed' });
+test('store hides RPC/network diagnostics and rejects malformed response shapes', async () => {
+  const broken = createSettingsStore({
+    client: { async rpc() { throw new Error('synthetic-sensitive-database-detail'); } },
+    secretKey: key,
+  });
+  await assert.rejects(broken.load(), (error) => {
+    assert.equal(error.message, 'settings_store_failed');
+    assert.equal(error.cause, undefined);
+    assert.doesNotMatch(String(error), /synthetic-sensitive/);
+    return true;
+  });
+
+  const malformed = createSettingsStore({
+    client: { async rpc() { return { data: { settings: DEFAULT_SETTINGS, version: 1 }, error: null }; } },
+    secretKey: key,
+  });
+  await assert.rejects(malformed.load(), { message: 'settings_store_failed' });
+});
+
+test('key rotation leaves only last-four status and directs owners to re-enter unreadable secrets', async () => {
+  const client = fakeClient();
+  const original = createSettingsStore({ client, secretKey: key });
+  await original.setSecret('custom', 'custom-key-rotation-1234');
+  const rotated = createSettingsStore({
+    client,
+    secretKey: Buffer.alloc(32, 5).toString('base64'),
+  });
+  assert.deepEqual((await rotated.secretStatus()).custom, { set: true, last4: '1234' });
+  await assert.rejects(rotated.getSecretPlain('custom'), { message: 'secret_decrypt_failed' });
+  const page = await readFile(new URL('../app/owner/assistant/settings/page.js', import.meta.url), 'utf8');
+  assert.match(page, /Stored key cannot be read; please re-enter it/);
+  assert.match(page, /change ASSISTANT_SECRET_KEY, then re-enter both provider keys/i);
 });

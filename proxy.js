@@ -17,4 +17,4 @@ export async function proxy(request) {
   response.headers.set('Cache-Control', 'private, no-store');
   return response;
 }
-export const config = { matcher: ['/owner/:path*', '/crew/:path*'] };
+export const config = { matcher: ['/owner/:path*', '/crew/:path*', '/api/owner/:path*'] };

@@ -18,7 +18,7 @@ Use the live workspace preview and a phone or laptop. The banner identifies the 
 
 The site interactions above are real browser interactions, but their records and outcomes are examples. Public application and quote intake, owner sign-in, actual referral invitations, employee accounts, notifications, verified training and scheduling are not live. No email or text is sent from the walkthrough. Optional video introductions remain unimplemented. The local source also contains disabled persistent intake and onboarding foundations, described in `PRODUCTION_READINESS_PROGRESS.md`; those are not connected to this walkthrough and must not be represented as an active business workflow.
 
-**Next decisions:** identify and authorize a dedicated Supabase staging project; supply Andy's notification email and approve sender/provider setup; agree on service offerings, privacy/retention, security and employee onboarding. Test using separate real sessions and synthetic data before going live.
+**Next decisions:** identify and authorize a dedicated Supabase staging project; supply the owner's notification email and approve sender/provider setup; agree on service offerings, privacy/retention, security and employee onboarding. Test using separate real sessions and synthetic data before going live.
 
 ## Design choice and limits
 
