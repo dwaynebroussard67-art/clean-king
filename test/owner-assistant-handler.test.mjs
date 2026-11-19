@@ -47,8 +47,8 @@ function setup(overrides = {}) {
       state.snapshotCalls.push(capabilities);
       return { newApplications: 2, newQuotes: 1, queuedEmails: 0, failedEmails: 1 };
     },
-    beginRun: async (limits) => {
-      state.runs.push(limits);
+    beginRun: async () => {
+      state.runs.push('started');
       return [{ run_id: 'run-1', result: 'ok' }];
     },
     finishRun: async (...args) => { state.finish.push(args); },
@@ -82,7 +82,7 @@ test('assistant route honors saved provider, persona capabilities, limits, histo
   assert.equal(response.status, 200);
   const body = await response.json();
   assert.deepEqual(body, { answer: 'A safe answer.', meta: { provider: 'anthropic', model: 'claude-sonnet-5-5' } });
-  assert.deepEqual(state.runs, [{ perMinute: 3, perMonth: 100 }]);
+  assert.deepEqual(state.runs, ['started']);
   assert.deepEqual(state.calls[0].messages, [
     { role: 'user', content: 'Earlier?' },
     { role: 'assistant', content: 'Earlier answer.' },

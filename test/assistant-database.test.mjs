@@ -28,6 +28,7 @@ async function setup() {
   await db.exec(foundation);
   await db.exec(await readFile(new URL('../supabase/migrations/20261117020000_assistant_usage.sql', import.meta.url), 'utf8'));
   await db.exec(await readFile(new URL('../supabase/migrations/20261118000000_assistant_settings.sql', import.meta.url), 'utf8'));
+  await db.exec(await readFile(new URL('../supabase/migrations/20261118010000_assistant_quota_settings.sql', import.meta.url), 'utf8'));
   await db.exec(`insert into auth.users values ('${OWNER}'), ('${STRANGER}');
     insert into public.owner_memberships(user_id) values ('${OWNER}');`);
   return db;
@@ -69,7 +70,7 @@ test('assistant settings and secret RPCs are server-only; owner settings save is
   }
 });
 
-test('assistant quota remains owner-only and the two-argument function defaults to 3/minute and 100/month', async () => {
+test('assistant quota is owner-only, reads saved limits, and has no caller-supplied overload', async () => {
   const db = await setup();
   try {
     await db.exec('set role anon');
@@ -77,18 +78,27 @@ test('assistant quota remains owner-only and the two-argument function defaults 
     await db.exec(`reset role; set role authenticated; select set_config('request.jwt.claim.sub','${STRANGER}',false);`);
     await assert.rejects(db.query('select * from public.begin_assistant_run()'));
     assert.equal((await db.query('select count(*)::int as n from public.assistant_runs')).rows[0].n, 0);
+
     await db.exec(`select set_config('request.jwt.claim.sub','${OWNER}',false)`);
-    const first = (await db.query('select * from public.begin_assistant_run()')).rows[0];
-    assert.equal(first.result, 'ok');
-    assert.equal((await db.query(`select public.finish_assistant_run('${first.run_id}',true) as ok`)).rows[0].ok, true);
-    await db.query('select * from public.begin_assistant_run()');
-    await db.query('select * from public.begin_assistant_run()');
+    for (let index = 0; index < 3; index += 1) {
+      assert.equal((await db.query('select * from public.begin_assistant_run()')).rows[0].result, 'ok');
+    }
     assert.equal((await db.query('select * from public.begin_assistant_run()')).rows[0].result, 'rate_limit');
+    await assert.rejects(db.query('select * from public.begin_assistant_run(10,1000)'));
     await assert.rejects(db.query('delete from public.assistant_runs'));
+
+    await db.exec(`reset role; update public.assistant_runs set created_at=now()-interval '2 minutes'; set role service_role;`);
+    const restricted = structuredClone(DEFAULTS);
+    restricted.limits.perMinute = 1;
+    const saved = await db.query('select * from public.save_assistant_settings($1,$2::jsonb,0)', [OWNER, JSON.stringify(restricted)]);
+    assert.deepEqual(saved.rows[0], { result: 'ok', version: 1 });
+    await db.exec(`reset role; set role authenticated; select set_config('request.jwt.claim.sub','${OWNER}',false);`);
+    assert.equal((await db.query('select * from public.begin_assistant_run()')).rows[0].result, 'ok');
+    assert.equal((await db.query('select * from public.begin_assistant_run()')).rows[0].result, 'rate_limit');
 
     await db.exec(`reset role; update public.assistant_runs set created_at=now()-interval '2 minutes';
       insert into public.assistant_runs(owner_id,created_at)
-      select '${OWNER}', now()-interval '2 minutes' from generate_series(1,97);
+      select '${OWNER}', now()-interval '2 minutes' from generate_series(1,96);
       set role authenticated; select set_config('request.jwt.claim.sub','${OWNER}',false);`);
     assert.equal((await db.query('select * from public.begin_assistant_run()')).rows[0].result, 'monthly_limit');
   } finally {

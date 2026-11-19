@@ -20,11 +20,8 @@ const handle = createOwnerAssistantHandler({
   loadSettings: async (_session, user) => settingsStore(user).load(),
   getSecret: async (_session, user, name) => settingsStore(user).getSecretPlain(name),
   loadSnapshot,
-  beginRun: async ({ perMinute, perMonth }, session) => {
-    const { data, error } = await session.rpc('begin_assistant_run', {
-      p_per_minute: perMinute,
-      p_per_month: perMonth,
-    });
+  beginRun: async (session) => {
+    const { data, error } = await session.rpc('begin_assistant_run');
     if (error) throw new Error('quota_unavailable');
     return data;
   },
