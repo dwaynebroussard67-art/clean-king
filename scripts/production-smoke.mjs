@@ -8,7 +8,7 @@ await new Promise((resolve,reject)=>{socket.once('error',reject);socket.listen(0
 const port=socket.address().port;
 await new Promise(resolve=>socket.close(resolve));
 const env={...process.env,NODE_ENV:'production',PORT:String(port),APP_ORIGIN:'https://synthetic.example',
- INTAKE_ENABLED:'true',REFERRALS_ENABLED:'true',OWNER_EMAIL_LINK_ENABLED:'true',OWNER_ASSISTANT_ENABLED:'false',
+ INTAKE_ENABLED:'true',REFERRALS_ENABLED:'true',OWNER_EMAIL_LINK_ENABLED:'true',OWNER_ASSISTANT_ENABLED:'true',ANTHROPIC_API_KEY:'synthetic-not-a-real-key',ANTHROPIC_MODEL:'synthetic-model',
  APPLICATION_EMAIL_NOTIFICATIONS_ENABLED:'false',NEXT_PUBLIC_SUPABASE_URL:'https://example.supabase.co',
  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:'synthetic',SUPABASE_SERVICE_ROLE_KEY:'synthetic',
  NEXT_PUBLIC_TURNSTILE_SITE_KEY:'synthetic',TURNSTILE_SECRET_KEY:'synthetic',OPENAI_API_KEY:'',RESEND_API_KEY:'',CRON_SECRET:''};
@@ -26,5 +26,8 @@ try{
  assert.equal(owner.status,200);assert.match(html,/Owner sign-in is not configured/);assert.match(owner.headers.get('cache-control')||'',/no-store/);
  const crew=await fetch(`${base}/crew/referrals`);assert.equal(crew.status,200);assert.match(await crew.text(),/Employee referrals are not available yet/);assert.match(crew.headers.get('cache-control')||'',/no-store/);
  const intake=await fetch(`${base}/api/intake`,{method:'POST',headers:{origin:'https://synthetic.example','content-type':'application/json'},body:'{}'});assert.equal(intake.status,503);
+ const assistant=await fetch(`${base}/api/owner/assistant`,{method:'POST',headers:{origin:'https://synthetic.example','content-type':'application/json'},body:JSON.stringify({message:'hello',language:'en'})});assert.equal(assistant.status,503);
+ const diagnostic=await fetch(`${base}/api/owner/assistant/diagnostics`,{method:'POST',headers:{origin:'https://synthetic.example','content-type':'application/json'},body:'{}'});assert.equal(diagnostic.status,503);
+ const helper=await fetch(`${base}/api/public/assistant`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({message:'12 * 5',language:'en'})});assert.equal(helper.status,200);assert.match((await helper.json()).answer,/60/);
  console.log('Production guards: owner development login, referral pages and intake fail closed.');
 } finally { child.kill('SIGTERM'); }

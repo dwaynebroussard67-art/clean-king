@@ -12,7 +12,9 @@ Use the live workspace preview and a phone or laptop. The banner identifies the 
 6. **Assistant:** ask the suggested question. The scripted response uses the current example counts, viewed lesson count and coverage suggestion; it is not a connected AI and cannot act or access private records.
 7. **Services:** open a service to see potential scope, then build an example plan. It is not a quote, price, contract or sent request. Actual service scope and pricing need owner approval.
 8. **Site maps & directions:** select areas on the fictional layout. Real plans and directions remain coming soon and need site approval and access controls.
-9. **Language:** use the language control in the header to switch between English and Spanish.
+9. **Settings:** explore the browser-only provider and tone controls. They do not configure the real owner assistant or activate AI; real settings require authorized owner access.
+10. **Help:** use the floating Help button on any page for deterministic general guidance or simple arithmetic. It is not AI and does not produce a price.
+11. **Language:** use the language control in the header to switch between English and Spanish.
 
 ## What's real and what still needs setup
 
