@@ -57,7 +57,7 @@ test('conflicting request warns before explicitly starting over',async({page})=>
   await page.getByRole('button',{name:'Review application'}).click();await page.getByRole('button',{name:'Submit application'}).click();
   await expect(page.locator('.form-error')).toContainText('may have been received');
   await expect(page.getByRole('button',{name:'Submit application'})).toBeDisabled();
-  await page.getByRole('button',{name:'Start a new request'}).click();await fillApplication(page);
+  await Promise.all([page.waitForEvent('load'),page.getByRole('button',{name:'Start a new request'}).click()]);await fillApplication(page);
   await page.getByRole('button',{name:'Review application'}).click();await page.getByRole('button',{name:'Submit application'}).click();
   await expect(page.getByRole('status')).toContainText('received');expect(ids[1]).not.toBe(ids[0]);
 });
