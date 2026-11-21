@@ -118,6 +118,11 @@ test('assistant quota reads saved limits and cannot accept caller-selected limit
     await asRole(db, 'authenticated', STRANGER);
     await assert.rejects(begin(db), DENIED);
 
+    await db.exec('reset role');
+    const definition = (await one(db, "select pg_get_functiondef('public.begin_assistant_run()'::regprocedure) as source")).source;
+    assert.ok(definition.indexOf('pg_advisory_xact_lock(1832711045)') < definition.indexOf("select s.settings->'limits'"));
+    const triggers = await db.query("select tgname from pg_trigger where tgrelid='public.assistant_settings'::regclass and not tgisinternal");
+    assert.ok(triggers.rows.some(row => row.tgname === 'assistant_settings_admission_lock'));
     await asRole(db, 'authenticated', OWNER);
     for (let index = 0; index < 3; index += 1) assert.equal((await begin(db)).result, 'ok');
     assert.deepEqual(await begin(db), { run_id: null, result: 'rate_limit' });

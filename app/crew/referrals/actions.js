@@ -2,6 +2,15 @@
 import { randomBytes, createHash } from 'node:crypto';
 import { revalidatePath } from 'next/cache';
 import { referralsEnabled, sessionClient, adminClient } from '../../../lib/server/supabase';
+import { revokeReferral } from '../../../lib/server/referral-revocation-handler.mjs';
+
+export async function revokeInvitation(_state, form) {
+  return revokeReferral(form, {
+    enabled: referralsEnabled,
+    sessionClient,
+    onRevoked: () => revalidatePath('/crew/referrals'),
+  });
+}
 
 export async function createInvitation() {
   if (!referralsEnabled()) return { error: 'Invitations are unavailable.' };

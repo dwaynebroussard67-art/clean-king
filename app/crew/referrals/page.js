@@ -79,12 +79,21 @@ export default async function Referrals() {
   } catch {
     totalsError = new Error('totals_unavailable');
   }
+  let invitations = [];
+  let invitationsError = false;
+  try {
+    const result = await client.rpc('my_referral_invitations');
+    if (result.error || !Array.isArray(result.data)) invitationsError = true;
+    else invitations = result.data;
+  } catch {
+    invitationsError = true;
+  }
   return (
     <div className="public-page">
       <PublicHeader />
       <main className="public-main">
         <div className="public-card">
-          <InviteForm created={totals?.[0]?.created ?? 0} submitted={totals?.[0]?.submitted ?? 0} totalsError={!!totalsError} />
+          <InviteForm created={totals?.[0]?.created ?? 0} submitted={totals?.[0]?.submitted ?? 0} totalsError={!!totalsError} invitations={invitations} invitationsError={invitationsError} />
         </div>
       </main>
     </div>
