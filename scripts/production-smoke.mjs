@@ -11,7 +11,8 @@ const env={...process.env,NODE_ENV:'production',PORT:String(port),APP_ORIGIN:'ht
  INTAKE_ENABLED:'true',REFERRALS_ENABLED:'true',OWNER_EMAIL_LINK_ENABLED:'true',OWNER_ASSISTANT_ENABLED:'false',
  APPLICATION_EMAIL_NOTIFICATIONS_ENABLED:'false',NEXT_PUBLIC_SUPABASE_URL:'https://example.supabase.co',
  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:'synthetic',SUPABASE_SERVICE_ROLE_KEY:'synthetic',
- NEXT_PUBLIC_TURNSTILE_SITE_KEY:'synthetic',TURNSTILE_SECRET_KEY:'synthetic',OPENAI_API_KEY:'',RESEND_API_KEY:'',CRON_SECRET:''};
+ NEXT_PUBLIC_TURNSTILE_SITE_KEY:'synthetic',TURNSTILE_SECRET_KEY:'synthetic',ASSISTANT_SECRET_KEY:'',
+ ANTHROPIC_API_KEY:'',AI_ALLOW_LOCAL_CUSTOM:'false',RESEND_API_KEY:'',CRON_SECRET:''};
 const child=spawn(process.execPath,['node_modules/next/dist/bin/next','start','--hostname','127.0.0.1','--port',String(port)],{env,stdio:['ignore','pipe','pipe']});
 let logs='';
 try{

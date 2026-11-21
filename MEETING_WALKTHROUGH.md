@@ -12,13 +12,14 @@ Use the live workspace preview and a phone or laptop. The banner identifies the 
 6. **Assistant:** ask the suggested question. The scripted response uses the current example counts, viewed lesson count and coverage suggestion; it is not a connected AI and cannot act or access private records.
 7. **Services:** open a service to see potential scope, then build an example plan. It is not a quote, price, contract or sent request. Actual service scope and pricing need owner approval.
 8. **Site maps & directions:** select areas on the fictional layout. Real plans and directions remain coming soon and need site approval and access controls.
-9. **Language:** use the language control in the header to switch between English and Spanish.
+9. **Settings:** explore the browser-only provider and tone controls. They do not configure the real owner assistant or activate AI; real settings require authorized owner access.
+10. **Language:** use the language control in the header to switch between English and Spanish.
 
 ## What's real and what still needs setup
 
 The site interactions above are real browser interactions, but their records and outcomes are examples. Public application and quote intake, owner sign-in, actual referral invitations, employee accounts, notifications, verified training and scheduling are not live. No email or text is sent from the walkthrough. Optional video introductions remain unimplemented. The local source also contains disabled persistent intake and onboarding foundations, described in `PRODUCTION_READINESS_PROGRESS.md`; those are not connected to this walkthrough and must not be represented as an active business workflow.
 
-**Next decisions:** identify and authorize a dedicated Supabase staging project; supply Andy's notification email and approve sender/provider setup; agree on service offerings, privacy/retention, security and employee onboarding. Test using separate real sessions and synthetic data before going live.
+**Next decisions:** identify and authorize a dedicated Supabase staging project; supply the owner's notification email and approve sender/provider setup; agree on service offerings, privacy/retention, security and employee onboarding. Test using separate real sessions and synthetic data before going live.
 
 ## Design choice and limits
 
