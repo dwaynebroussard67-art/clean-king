@@ -10,18 +10,16 @@ test('intake migration enforces owner membership, column permissions and audit l
       create schema auth; create table auth.users(id uuid primary key);
       create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub', true),'')::uuid $$;
       grant usage on schema auth to authenticated, anon; grant execute on function auth.uid() to authenticated, anon;`);
-    // PGlite includes gen_random_uuid but does not ship the pgcrypto extension.
-    const intakeMigration = (await readFile(new URL('../supabase/migrations/20261117000000_intake_foundation.sql', import.meta.url), 'utf8')).replace('create extension if not exists pgcrypto;', '');
-    await db.exec(intakeMigration);
-    // Apply the multi-franchise organizations migration so tests run against the
-    // current schema. PGlite has no pgcrypto, but the organizations migration does
-    // not use it; add column if not exists guards re-runs.
-    const orgMigration = (await readFile(new URL('../supabase/migrations/20261121030000_organizations_multi_franchise.sql', import.meta.url), 'utf8'));
-    // The organizations migration references auth.users; PGlite already has that table.
-    await db.exec(orgMigration);
+    // Apply the full migration chain so tests run against the current schema.
+    // PGlite has no pgcrypto; strip the extension guard only.
+    const { readdir } = await import('node:fs/promises');
+    const migrations = new URL('../supabase/migrations/', import.meta.url);
+    for (const file of (await readdir(migrations)).filter((name) => name.endsWith('.sql')).sort()) {
+      await db.exec((await readFile(new URL(file, migrations), 'utf8')).replace('create extension if not exists pgcrypto;', ''));
+    }
     const owner='11111111-1111-4111-8111-111111111111', stranger='22222222-2222-4222-8222-222222222222';
     const orgId='33333333-3333-4333-8333-333333333333';
-    await db.exec(`insert into auth.users values ('${owner}'), ('${stranger}'); insert into public.owner_memberships(user_id, organization_id) values ('${owner}','${orgId}'); insert into public.organizations(id, name, slug, owner_id, origin, status) values ('${orgId}','Test Franchise','test-franchise','${owner}','https://example.test','active');`);
+    await db.exec(`insert into auth.users values ('${owner}'), ('${stranger}'); insert into public.organizations(id, name, slug, owner_id, origin, status) values ('${orgId}','Test Franchise','test-franchise','${owner}','https://example.test','active'); insert into public.owner_memberships(user_id, organization_id) values ('${owner}','${orgId}');`);
     await db.exec(`set role service_role; insert into public.applicants(request_id, request_hash, organization_id, first_name, phone, area, shifts, transportation, languages, sms_consent, sms_consent_version, form_language, consented_at) values ('44444444-4444-4444-8444-444444444444',repeat('a',64),'${orgId}','Example','3375550199','Example',array['nights'],true,array['en'],true,'application-v1','en',now()); reset role;`);
     await db.exec(`set role service_role; insert into public.leads(request_id, request_hash, organization_id, building_type, size, frequency, contact_name, phone, email) values ('55555555-5555-4555-8555-555555555555',repeat('b',64),'${orgId}','hospital','unsure','weekly','Example','3375550199','test@example.com'); reset role;`);
     await db.exec(`set role anon;`);

@@ -22,40 +22,41 @@ grant select on public.organizations to authenticated;
 grant insert, update, delete on public.organizations to service_role;
 
 -- Every authenticated user can see organizations they own or belong to.
+-- ---------------------------------------------------------------------------
+-- Organization-scoped owner memberships (replaces the single-business table)
+-- ---------------------------------------------------------------------------
+drop policy if exists "Owners can see their own membership" on public.owner_memberships;
+drop policy if exists "Active owners see own membership" on public.owner_memberships;
+alter table public.owner_memberships drop constraint if exists owner_memberships_pkey;
+alter table public.owner_memberships add column if not exists organization_id uuid not null references public.organizations(id) on delete restrict;
+alter table public.owner_memberships add primary key (user_id, organization_id);
+alter table public.owner_memberships add column if not exists role text not null default 'owner' check (role in ('owner','manager'));
+alter table public.owner_memberships alter column created_at set default now();
+
+-- Users see their own organizations and any org where they hold a membership.
+-- Placed after the organization_id column exists.
+drop policy if exists "Users see their organizations" on public.organizations;
 create policy "Users see their organizations" on public.organizations for select to authenticated
   using (owner_id = (select auth.uid()) or
          exists (select 1 from public.owner_memberships m
                  where m.user_id = (select auth.uid()) and m.organization_id = public.organizations.id));
 
--- ---------------------------------------------------------------------------
--- Organization-scoped owner memberships (replaces the single-business table)
--- ---------------------------------------------------------------------------
-drop policy if exists "Owners can see their own membership" on public.owner_memberships;
-alter table public.owner_memberships drop constraint if exists owner_memberships_pkey;
-alter table public.owner_memberships add column if not exists organization_id uuid not null references public.organizations(id) on delete restrict;
-alter table public.owner_memberships add primary key if not exists (user_id, organization_id);
-alter table public.owner_memberships add column if not exists role text not null default 'owner' check (role in ('owner','manager'));
-alter table public.owner_memberships alter column created_at drop default if exists;
-alter table public.owner_memberships alter column created_at set default now();
-
--- Re-validate: every owner membership now belongs to an organization.
+-- Re-validate and re-gate: every owner membership now belongs to an organization,
+-- and the owner read policy keeps the emergency-stop gate from the access-control
+-- migration (is_business_owner) rather than only checking the user's own row.
+drop policy if exists "Owner members see own row" on public.owner_memberships;
 create policy "Owner members see own row" on public.owner_memberships for select to authenticated
-  using (user_id = (select auth.uid()));
+  using (user_id = (select auth.uid()) and (select public.is_business_owner()));
 create policy "Owner members write via service role" on public.owner_memberships for all to service_role using (true);
 
--- Update is_business_owner() to be organization-aware.
-create or replace function public.is_business_owner(p_organization_id uuid = null)
-returns boolean
-language sql stable security definer set search_path = ''
-as $$
-  select exists (
-    select 1 from public.owner_memberships m
-    where m.user_id = (select auth.uid())
-      and m.organization_id = coalesce(p_organization_id, m.organization_id)
-  );
-$$;
-revoke all on function public.is_business_owner(uuid) from public, anon;
-grant execute on function public.is_business_owner(uuid) to authenticated;
+-- NOTE: is_business_owner() is NOT redefined here. The access-control migration
+-- (20261121000000) intentionally replaced it with the fail-closed
+-- (owner_access_control) form — keep that semantics. Policies and RPCs gate on the
+-- single 0-argument call; an organization-aware overload would make that call
+-- ambiguous and silently weaken the emergency-stop gate.
+--
+-- Org scoping happens through current_organization_id() and the org-aware
+-- policies/RPCs below, not through is_business_owner().
 
 -- Convenience: current organization from a claim or session helper.
 create or replace function public.current_organization_id()
@@ -80,10 +81,10 @@ create index if not exists applicants_organization_created_idx on public.applica
 drop policy if exists "Owner reads applicants" on public.applicants;
 drop policy if exists "Owner updates applicants" on public.applicants;
 create policy "Owners read own org applicants" on public.applicants for select to authenticated
-  using (organization_id = (select public.current_organization_id()));
+  using (organization_id = (select public.current_organization_id()) and (select public.is_business_owner()));
 create policy "Owners update own org applicants" on public.applicants for update to authenticated
-  using (organization_id = (select public.current_organization_id()))
-  with check (organization_id = (select public.current_organization_id()));
+  using (organization_id = (select public.current_organization_id()) and (select public.is_business_owner()))
+  with check (organization_id = (select public.current_organization_id()) and (select public.is_business_owner()));
 grant update (status, school_cleared, hospital_cleared) on public.applicants to authenticated;
 
 -- ---------------------------------------------------------------------------
@@ -95,21 +96,43 @@ create index if not exists leads_organization_created_idx on public.leads(organi
 drop policy if exists "Owner reads leads" on public.leads;
 drop policy if exists "Owner updates leads" on public.leads;
 create policy "Owners read own org leads" on public.leads for select to authenticated
-  using (organization_id = (select public.current_organization_id()));
+  using (organization_id = (select public.current_organization_id()) and (select public.is_business_owner()));
 create policy "Owners update own org leads" on public.leads for update to authenticated
-  using (organization_id = (select public.current_organization_id()))
-  with check (organization_id = (select public.current_organization_id()));
+  using (organization_id = (select public.current_organization_id()) and (select public.is_business_owner()))
+  with check (organization_id = (select public.current_organization_id()) and (select public.is_business_owner()));
 grant update (status) on public.leads to authenticated;
 
 -- ---------------------------------------------------------------------------
 -- Audit log -> add organization_id
 -- ---------------------------------------------------------------------------
-alter table public.audit_log add column if not exists organization_id uuid not null references public.organizations(id) on delete restrict;
+alter table public.audit_log add column if not exists organization_id uuid references public.organizations(id) on delete restrict;
 create index if not exists audit_log_organization_created_idx on public.audit_log(organization_id, created_at desc);
 
 drop policy if exists "Owner reads audit log" on public.audit_log;
 create policy "Owners read own org audit log" on public.audit_log for select to authenticated
-  using (organization_id = (select public.current_organization_id()));
+  using (organization_id = (select public.current_organization_id()) and (select public.is_business_owner()));
+
+-- The owner-access-control trigger writes audit rows without organization_id.
+-- Workspace-global access events carry no franchise; org-scoped membership events
+-- carry the membership's franchise.
+create or replace function public.audit_owner_access_control() returns trigger
+language plpgsql security definer set search_path = '' as $$
+begin
+  if tg_table_name = 'owner_access_control' then
+    if old.enabled is distinct from new.enabled then
+      insert into public.audit_log(actor_id, organization_id, entity_type, entity_id, action, details)
+      values (null, null, 'owner_access', '00000000-0000-0000-0000-000000000000'::uuid, 'global_access_changed',
+        jsonb_build_object('enabled',new.enabled));
+    end if;
+  elsif tg_table_name = 'owner_memberships' then
+    if old.active is distinct from new.active then
+      insert into public.audit_log(actor_id, organization_id, entity_type, entity_id, action, details)
+      values (null, new.organization_id, 'owner_access', new.user_id, 'owner_access_changed', jsonb_build_object('active',new.active));
+    end if;
+  end if;
+  return new;
+end; $$;
+revoke all on function public.audit_owner_access_control() from public, anon, authenticated, service_role;
 
 -- Rewrite the audit trigger to record organization_id.
 create or replace function public.audit_intake_change() returns trigger
@@ -147,12 +170,16 @@ revoke all on function public.audit_intake_change() from public, anon, authentic
 -- Employee memberships -> add organization_id
 -- ---------------------------------------------------------------------------
 alter table public.employee_memberships add column if not exists organization_id uuid not null references public.organizations(id) on delete restrict;
-alter table public.employee_memberships add primary key if not exists (user_id, organization_id);
+-- NB: employee_memberships keeps its single-column primary key on user_id (one
+-- membership per user), because referral attributions/invitations carry foreign keys
+-- against that column. Organization scoping is carried by the organization_id column and
+-- the policies/RPCs, not by a composite key.
 create index if not exists employee_memberships_organization_idx on public.employee_memberships(organization_id);
 
 drop policy if exists "Employee sees own membership" on public.employee_memberships;
 create policy "Employees see own membership" on public.employee_memberships for select to authenticated
-  using (user_id = (select auth.uid()) and organization_id = (select public.current_organization_id()));
+  using (user_id = (select auth.uid()) or
+         (public.is_business_owner() and organization_id = (select public.current_organization_id())));
 grant select (user_id, active, created_at, organization_id) on public.employee_memberships to authenticated;
 
 -- ---------------------------------------------------------------------------
@@ -164,7 +191,7 @@ create index if not exists referral_invitations_organization_created_idx on publ
 -- Owners read invitations for their org; service role writes.
 drop policy if exists "Owner reads referral invitations" on public.referral_invitations;
 create policy "Owners read own org invitations" on public.referral_invitations for select to authenticated
-  using (organization_id = (select public.current_organization_id()));
+  using (organization_id = (select public.current_organization_id()) and (select public.is_business_owner()));
 
 -- Rewrite create_employee_invitation to scope by organization.
 create or replace function public.create_employee_invitation(p_organization_id uuid, p_employee_id uuid, p_hash text)
@@ -190,10 +217,14 @@ alter table public.referral_attributions add column if not exists organization_i
 
 drop policy if exists "Owner reads referral attribution" on public.referral_attributions;
 create policy "Owners read own org attributions" on public.referral_attributions for select to authenticated
-  using (organization_id = (select public.current_organization_id()));
+  using (organization_id = (select public.current_organization_id()) and (select public.is_business_owner()));
 
 -- Rewrite submit_referred_application to validate organization and record it.
-create or replace function public.submit_referred_application(p_row jsonb, p_code_hash text, p_organization_id uuid)
+-- This replaces the legacy single-workspace 2-argument function (which is kept as a
+-- distinct overload otherwise and would silently bypass organization scoping).
+drop function public.submit_referred_application(jsonb, text);
+
+create function public.submit_referred_application(p_row jsonb, p_code_hash text, p_organization_id uuid)
 returns text
 language plpgsql security definer set search_path = ''
 as $$
@@ -215,12 +246,13 @@ begin
   if found then
     if old_hash = p_row->>'request_hash' then return 'duplicate'; else return 'conflict'; end if;
   end if;
-  if invite.used_at is not null or invite.expires_at <= now() then return 'invalid'; end if;
-  insert into public.applicants(request_id, request_hash, organization_id, first_name, phone, area, shifts, transportation, languages, referrer, sms_consent, sms_consent_version, form_language, consented_at)
+  if invite.used_at is not null or invite.revoked_at is not null or invite.expires_at <= now() then return 'invalid'; end if;
+  insert into public.applicants(request_id, request_hash, organization_id, first_name, phone, area, shifts, transportation, languages, referrer, sms_consent, sms_consent_version, form_language, consented_at, experience_level, commercial_experience, residential_experience, equipment_experience, training_willingness)
     values (rid, p_row->>'request_hash', p_organization_id, p_row->>'first_name', p_row->>'phone', p_row->>'area',
       array(select jsonb_array_elements_text(p_row->'shifts')), (p_row->>'transportation')::boolean,
       array(select jsonb_array_elements_text(p_row->'languages')), p_row->>'referrer',
-      (p_row->>'sms_consent')::boolean, p_row->>'sms_consent_version', p_row->>'form_language', nullif(p_row->>'consented_at','')::timestamptz)
+      (p_row->>'sms_consent')::boolean, p_row->>'sms_consent_version', p_row->>'form_language', nullif(p_row->>'consented_at','')::timestamptz,
+      p_row->>'experience_level', p_row->>'commercial_experience', p_row->>'residential_experience', p_row->>'equipment_experience', p_row->>'training_willingness')
     on conflict (request_id) do nothing returning id into app_id;
   if app_id is null then
     select request_hash into old_hash from public.applicants where request_id=rid;
@@ -244,11 +276,13 @@ alter table public.application_notifications add column if not exists organizati
 create index if not exists application_notifications_organization_status_idx on public.application_notifications(organization_id, status, available_at);
 
 -- ---------------------------------------------------------------------------
--- Assistant usage / settings -> add organization_id
+-- assistant_settings / assistant_runs: deliberately NOT organization-scoped here.
+-- These are single-workspace singletons (one assistant configuration, tracked
+-- runs). Per-franchise assistant configuration requires a dedicated redesign
+-- (a per-organization singleton keyed on organization_id) that is out of scope
+-- for this migration. Do not add organization_id columns here without that
+-- redesign: the existing RPCs assume one configuration per workspace.
 -- ---------------------------------------------------------------------------
-alter table public.assistant_usage add column if not exists organization_id uuid not null references public.organizations(id) on delete restrict;
-alter table public.assistant_settings add column if not exists organization_id uuid not null references public.organizations(id) on delete restrict;
-alter table public.assistant_quota_settings add column if not exists organization_id uuid not null references public.organizations(id) on delete restrict;
 
 -- ---------------------------------------------------------------------------
 -- Backfill helper for existing rows (run manually after applying).
@@ -262,6 +296,3 @@ alter table public.assistant_quota_settings add column if not exists organizatio
 --   update public.employee_memberships set organization_id = '<ORG UUID>' where organization_id is null;
 --   update public.referral_invitations set organization_id = '<ORG UUID>' where organization_id is null;
 --   update public.referral_attributions set organization_id = '<ORG UUID>' where organization_id is null;
---   update public.assistant_usage set organization_id = '<ORG UUID>' where organization_id is null;
---   update public.assistant_settings set organization_id = '<ORG UUID>' where organization_id is null;
---   update public.assistant_quota_settings set organization_id = '<ORG UUID>' where organization_id is null;

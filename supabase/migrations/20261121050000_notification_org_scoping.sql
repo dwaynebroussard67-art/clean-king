@@ -15,7 +15,11 @@ revoke all on function public.enqueue_application_notification() from public, an
 -- Claim one job at a time, scoped to the worker's organization context.
 -- The service role may claim any franchise's notifications; RLS is bypassed.
 -- Organization is resolved from the applicant so each franchise's queue is isolated.
-create or replace function public.claim_application_notification()
+-- create or replace cannot change a function's return type, so drop the
+-- single-franchise definition before creating the organization-scoped one.
+drop function public.claim_application_notification();
+
+create function public.claim_application_notification()
 returns table(notification_id uuid, claim_token uuid, applicant_id uuid, first_name text, phone text, area text, shifts text[], transportation boolean, languages text[], referrer text, organization_id uuid, created_at timestamptz)
 language plpgsql security definer set search_path = ''
 as $$

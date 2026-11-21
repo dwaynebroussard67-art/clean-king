@@ -23,11 +23,13 @@ async function setup() {
   for (const name of (await readdir(folder)).filter(x => x.endsWith('.sql')).sort()) {
     await db.exec((await readFile(new URL(name, folder), 'utf8')).replace('create extension if not exists pgcrypto;', ''));
   }
+  const ORG = '55555555-5555-4555-8555-555555555555';
   await db.query('insert into auth.users(id) values ($1),($2),($3)', [OWNER, SECOND, EMPLOYEE]);
-  await db.query('insert into public.owner_memberships(user_id) values ($1),($2)', [OWNER, SECOND]);
-  await db.query('insert into public.employee_memberships(user_id) values ($1)', [EMPLOYEE]);
-  await db.exec(`insert into public.applicants(request_id,request_hash,first_name,phone,area,shifts,transportation,languages,sms_consent,sms_consent_version,form_language)
-    values ('${REQUEST}',repeat('a',64),'Example','3375550199','Example',array['nights'],true,array['en'],false,'v1','en');`);
+  await db.query("insert into public.organizations(id, name, slug, owner_id) values ($1, 'Test Franchise', 'test-franchise', $2)", [ORG, OWNER]);
+  await db.query('insert into public.owner_memberships(user_id, organization_id) values ($1, $3),($2, $3)', [OWNER, SECOND, ORG]);
+  await db.query('insert into public.employee_memberships(user_id, organization_id) values ($1, $2)', [EMPLOYEE, ORG]);
+  await db.exec(`insert into public.applicants(request_id,request_hash,organization_id,first_name,phone,area,shifts,transportation,languages,sms_consent,sms_consent_version,form_language)
+    values ('${REQUEST}',repeat('a',64),'${ORG}','Example','3375550199','Example',array['nights'],true,array['en'],false,'v1','en');`);
   return db;
 }
 async function as(db, role, id = '') {

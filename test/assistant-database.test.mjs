@@ -37,7 +37,9 @@ async function database() {
     await db.exec(sql.replace('create extension if not exists pgcrypto;', ''));
   }
   await db.query('insert into auth.users (id) values ($1), ($2)', [OWNER, STRANGER]);
-  await db.query('insert into public.owner_memberships (user_id) values ($1)', [OWNER]);
+  const ORG = '33333333-3333-4333-8333-333333333333';
+  await db.query("insert into public.organizations (id, name, slug, owner_id, origin, status) values ($1, 'Test Franchise', 'test-franchise', $2, null, 'active')", [ORG, OWNER]);
+  await db.query('insert into public.owner_memberships (user_id, organization_id) values ($1, $2)', [OWNER, ORG]);
   return db;
 }
 

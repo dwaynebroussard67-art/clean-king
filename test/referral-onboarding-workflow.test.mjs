@@ -9,18 +9,20 @@ import {createIntakeHandler} from '../lib/server/intake-handler.mjs';
 test('synthetic referral submits through the HTTP handler into owner-approved onboarding',async()=>{
  const db=new PGlite();
  const owner='11111111-1111-4111-8111-111111111111',employee='22222222-2222-4222-8222-222222222222',other='33333333-3333-4333-8333-333333333333';
- const requestId='44444444-4444-4444-8444-444444444444',code='a'.repeat(64),codeHash=createHash('sha256').update(code).digest('hex');
+ const orgId='44444444-4444-4444-8444-444444444444';
+ const requestId='55555555-5555-4555-8555-555555555555',code='a'.repeat(64),codeHash=createHash('sha256').update(code).digest('hex');
  try{
   await db.exec(`create role anon;create role authenticated;create role service_role bypassrls;create schema auth;create table auth.users(id uuid primary key);create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;grant usage on schema auth to authenticated,anon;grant execute on function auth.uid() to authenticated,anon;`);
   const root=new URL('../supabase/migrations/',import.meta.url);
   for(const file of (await readdir(root)).filter(x=>x.endsWith('.sql')).sort())await db.exec((await readFile(new URL(file,root),'utf8')).replace('create extension if not exists pgcrypto;',''));
-  await db.exec(`insert into auth.users values ('${owner}'),('${employee}'),('${other}'); insert into public.owner_memberships(user_id) values ('${owner}'); insert into public.employee_memberships(user_id) values ('${employee}'); set role authenticated; select set_config('request.jwt.claim.sub','${employee}',false)`);
+  await db.exec(`insert into auth.users values ('${owner}'),('${employee}'),('${other}'); insert into public.organizations(id, name, slug, owner_id) values ('${orgId}','Test Franchise','test-franchise','${owner}'); insert into public.owner_memberships(user_id, organization_id) values ('${owner}','${orgId}'); insert into public.employee_memberships(user_id, organization_id) values ('${employee}','${orgId}'); set role authenticated; select set_config('request.jwt.claim.sub','${employee}',false)`);
   assert.equal((await db.query('select active from public.employee_memberships where user_id=$1',[employee])).rows[0].active,true);
   await db.exec('reset role; set role service_role');
-  assert.ok((await db.query('select public.create_employee_invitation($1,$2) as expires',[employee,codeHash])).rows[0].expires);
+  assert.ok((await db.query('select public.create_employee_invitation($1,$2,$3) as expires',[orgId,employee,codeHash])).rows[0].expires);
   const calls=[];
   const handler=createIntakeHandler({getConfig:()=>({origin:'https://example.test',hostname:'example.test',secret:'synthetic'}),referralsEnabled:()=>true,
-   createAdmin:()=>({rpc:async(name,args)=>{assert.equal(name,'submit_referred_application');const result=await db.query('select public.submit_referred_application($1::jsonb,$2) as result',[JSON.stringify(args.p_row),args.p_code_hash]);return {data:result.rows[0].result,error:null}}}),
+   createAdmin:()=>({rpc:async(name,args)=>{assert.equal(name,'submit_referred_application');const result=await db.query('select public.submit_referred_application($1::jsonb,$2,$3) as result',[JSON.stringify(args.p_row),args.p_code_hash,args.p_organization_id]);return {data:result.rows[0].result,error:null}}}),
+   organizationByOrigin:()=>({id:orgId}),
    after:fn=>calls.push(fn),processNotifications:async()=>{},fetcher:async()=>new Response(JSON.stringify({success:true,hostname:'example.test',action:'application'}),{headers:{'content-type':'application/json'}})});
   const payload={kind:'application',formLanguage:'en',requestId,token:'synthetic-token',data:{firstName:'Synthetic',phone:'3375550199',area:'Synthetic',shifts:['nights'],transportation:'yes',languages:['en'],referrer:'',smsConsent:false,referralCode:code,experienceLevel:'under_one',commercialExperience:'yes',residentialExperience:null,equipmentExperience:null,trainingWillingness:'yes'}};
   const submit=()=>handler(new Request('https://example.test/api/intake',{method:'POST',headers:{origin:'https://example.test','content-type':'application/json'},body:JSON.stringify(payload)}));

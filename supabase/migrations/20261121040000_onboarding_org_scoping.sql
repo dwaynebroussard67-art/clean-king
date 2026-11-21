@@ -13,9 +13,13 @@ alter table public.onboarding_tasks add column if not exists organization_id uui
 drop policy if exists "Owner reads onboarding" on public.employee_onboarding;
 drop policy if exists "Owner reads onboarding tasks" on public.onboarding_tasks;
 create policy "Owners read own org onboarding" on public.employee_onboarding for select to authenticated
-  using (organization_id = (select public.current_organization_id()));
+  using (organization_id = (select public.current_organization_id()) and (select public.is_business_owner()));
 create policy "Owners read own org onboarding tasks" on public.onboarding_tasks for select to authenticated
-  using (organization_id = (select public.current_organization_id()));
+  using (organization_id = (select public.current_organization_id()) and (select public.is_business_owner()));
+
+-- Grant the newly added column to authenticated readers (column-scoped grants).
+grant select (id, applicant_id, started_by, started_at, organization_id) on public.employee_onboarding to authenticated;
+grant select (onboarding_id, task_code, status, recorded_by, recorded_at, organization_id) on public.onboarding_tasks to authenticated;
 
 -- ---------------------------------------------------------------------------
 -- Rewrite set_applicant_status with organization scoping

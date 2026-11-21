@@ -1,9 +1,7 @@
 import { createBubblesHandler } from '../../../../lib/server/bubbles-handler.mjs';
 import { sessionClient } from '../../../../lib/server/supabase.js';
-import { ownerLoginEnabled } from '../../../../lib/server/auth-config.mjs';
 import { loadSnapshot } from '../../../../lib/server/assistant-snapshot.mjs';
 import { createSettingsStore } from '../../../../lib/server/assistant-settings-store.mjs';
-import { secretKeyValid } from '../../../../lib/server/secret-box.mjs';
 import { buildSystemPrompt } from '../../../../lib/assistant-prompt.mjs';
 import { settingsForPrompt } from '../../../../lib/assistant-settings-schema.mjs';
 
