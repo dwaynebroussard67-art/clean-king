@@ -11,6 +11,13 @@ function Bi({ en, es }) { return <>{en} / {es}</>; }
 function Action({ type, id, field, value, children }) {
   return <form action={updateIntake}><input type="hidden" name="type" value={type}/><input type="hidden" name="id" value={id}/><input type="hidden" name="field" value={field}/><input type="hidden" name="value" value={value}/><button className="btn light small">{children}</button></form>;
 }
+function OrgSwitcher({ orgs, selectedId, onSelect }) {
+  if (!orgs || orgs.length <= 1) return null;
+  return <div className="org-switcher"><span className="mini-label"><Bi en="Franchise:" es="Franchicia:"/></span>
+    <select value={selectedId} onChange={(e) => onSelect(e.target.value)} aria-label="Select franchise">
+      {orgs.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
+    </select></div>;
+}
 
 export default async function Owner({ searchParams }) {
   if (!ownerLoginEnabled()) redirect('/owner/login');
@@ -18,16 +25,30 @@ export default async function Owner({ searchParams }) {
   if (!client) redirect('/owner/login');
   const { data: { user } = {}, error } = await client.auth.getUser();
   if (error || !user) redirect('/owner/login');
-  const { data: membership, error: membershipError } = await client.from('owner_memberships')
-    .select('user_id').eq('user_id', user.id).maybeSingle();
-  if (membershipError || !membership) return <div className="public-page"><PublicHeader/><main className="public-main"><div className="public-card"><h1><Bi en="Access not approved." es="Acceso no aprobado."/></h1><p className="public-intro"><Bi en="This account is not an approved owner account." es="Esta cuenta no está aprobada como cuenta del propietario."/></p><form action={signOut}><button className="btn light"><Bi en="Sign out" es="Cerrar sesión"/></button></form></div></main></div>;
+  // Multi-franchise: fetch the owner's organizations and the current selection.
+  const { data: memberships, error: mError } = await client
+    .from('owner_memberships').select('organization_id, role')
+    .eq('user_id', user.id);
+  if (mError || !memberships || memberships.length === 0) return <div className="public-page"><PublicHeader/><main className="public-main"><div className="public-card"><h1><Bi en="Access not approved." es="Acceso no aprobado."/></h1><p className="public-intro"><Bi en="This account is not an approved owner account." es="Esta cuenta no está aprobada como cuenta del propietario."/></p><form action={signOut}><button className="btn light"><Bi en="Sign out" es="Cerrar sesión"/></button></form></div></main></div>;
+
+  const orgIds = memberships.map((m) => m.organization_id);
+  const { data: orgs } = await client
+    .from('organizations').select('id, name, slug, status')
+    .in('id', orgIds);
+  if (!orgs || orgs.length === 0) return <div className="public-page"><PublicHeader/><main className="public-main"><div className="public-card"><h1><Bi en="No franchises found." es="No se encontraron Franquicias."/></h1><form action={signOut}><button className="btn light"><Bi en="Sign out" es="Cerrar sesión"/></button></form></div></main></div>;
+
+  const selectedOrgId = (params.org && orgIds.includes(params.org)) ? params.org
+    : orgs.find((o) => o.status === 'active')?.id ?? orgs[0].id;
+  const selectedOrg = orgs.find((o) => o.id === selectedOrgId);
 
   const params = await searchParams;
   const appCursor = decodeCursor(params.apps), leadCursor = decodeCursor(params.leads);
   const invalidCursor = (params.apps && !appCursor) || (params.leads && !leadCursor);
   const pageSize = 25;
   function pageQuery(table, cursor) {
-    let query = client.from(table).select('*').order('created_at', { ascending: false }).order('id', { ascending: false }).limit(pageSize + 1);
+    let query = client.from(table).select('*')
+      .eq('organization_id', selectedOrgId)
+      .order('created_at', { ascending: false }).order('id', { ascending: false }).limit(pageSize + 1);
     const filter = beforeFilter(cursor);
     return filter ? query.or(filter) : query;
   }
@@ -43,25 +64,35 @@ export default async function Owner({ searchParams }) {
   }
 
   const notifications = apps.data?.length
-    ? await client.from('application_notifications').select('applicant_id,status,attempts').in('applicant_id', apps.data.map((a) => a.id))
+    ? await client.from('application_notifications').select('applicant_id,status,attempts')
+      .eq('organization_id', selectedOrgId)
+      .in('applicant_id', apps.data.map((a) => a.id))
     : { data: [], error: null };
   const notificationByApplicant = new Map((notifications.data || []).map((n) => [n.applicant_id, n]));
   const referrals = apps.data?.length
-    ? await client.from('referral_attributions').select('application_id,employee_id,attributed_at').in('application_id', apps.data.map((a) => a.id))
+    ? await client.from('referral_attributions').select('application_id,employee_id,attributed_at')
+      .eq('organization_id', selectedOrgId)
+      .in('application_id', apps.data.map((a) => a.id))
     : { data: [], error: null };
   const referralByApplicant = new Map((referrals.data || []).map((r) => [r.application_id, r]));
   const onboarding = apps.data?.length
-    ? await client.from('employee_onboarding').select('id,applicant_id,started_at').in('applicant_id', apps.data.map((a) => a.id))
+    ? await client.from('employee_onboarding').select('id,applicant_id,started_at')
+      .eq('organization_id', selectedOrgId)
+      .in('applicant_id', apps.data.map((a) => a.id))
     : { data: [], error: null };
   const onboardingByApplicant = new Map((onboarding.data || []).map((o) => [o.applicant_id, o]));
   const tasks = onboarding.data?.length
-    ? await client.from('onboarding_tasks').select('onboarding_id,task_code,status').in('onboarding_id', onboarding.data.map((o) => o.id))
+    ? await client.from('onboarding_tasks').select('onboarding_id,task_code,status')
+      .eq('organization_id', selectedOrgId)
+      .in('onboarding_id', onboarding.data.map((o) => o.id))
     : { data: [], error: null };
 
   return <div className="public-page"><PublicHeader/><main className="owner-main">
     <div className="owner-heading"><div>
       <div className="mini-label"><Bi en="OWNER WORKSPACE · DEVELOPMENT ACCESS" es="ESPACIO DEL PROPIETARIO · ACCESO DE DESARROLLO"/></div>
+      {orgs.length > 1 && <OrgSwitcher orgs={orgs} selectedId={selectedOrgId} onSelect={(id) => { const u = new URLSearchParams(params); u.set('org', id); window.location.href = `/owner?${u.toString()}`; }}/>}
       <h1><Bi en="Intake inbox." es="Bandeja de solicitudes."/></h1>
+      {selectedOrg && orgs.length > 1 && <p className="public-intro"><Bi en={`Franchising: ${selectedOrg.name}`} es={`Franchicia: ${selectedOrg.name}`}/></p>}
       <p className="public-intro"><Bi en="Applications and quote requests are stored privately. These controls do not send texts." es="Las solicitudes de empleo y presupuestos se guardan de forma privada. Estos controles no envían mensajes de texto."/></p>
     </div><div className="owner-heading-actions"><Link className="btn dark" href="/owner/assistant"><Bi en="Owner assistant" es="Asistente del propietario"/></Link><form action={signOut}><button className="btn light"><Bi en="Sign out" es="Cerrar sesión"/></button></form></div></div>
     <div className="inline-notice"><Bi en="Email-link access is temporary and does not meet the passkey or approved-device requirements for launch." es="El acceso mediante enlace de correo es temporal y no cumple los requisitos de llaves de acceso ni de dispositivos aprobados para el lanzamiento."/></div>

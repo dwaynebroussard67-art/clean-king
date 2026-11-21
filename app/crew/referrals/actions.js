@@ -1,7 +1,7 @@
 'use server';
 import { randomBytes, createHash } from 'node:crypto';
 import { revalidatePath } from 'next/cache';
-import { referralsEnabled, sessionClient, adminClient } from '../../../lib/server/supabase';
+import { referralsEnabled, sessionClient, adminClient, currentOrganization } from '../../../lib/server/supabase';
 import { revokeReferral } from '../../../lib/server/referral-revocation-handler.mjs';
 
 export async function revokeInvitation(_state, form) {
@@ -18,12 +18,18 @@ export async function createInvitation() {
   if (!client) return { error: 'Sign-in is required.' };
   const { data: { user }, error: authError } = await client.auth.getUser();
   if (authError || !user) return { error: 'Sign-in is required.' };
+
+  // Multi-franchise: invitations are scoped to the employee's organization.
+  const orgId = await currentOrganization(client);
+  if (!orgId) return { error: 'No franchise is associated with this account.' };
+
   const code = randomBytes(32).toString('hex');
   const hash = createHash('sha256').update(code).digest('hex');
   const admin = adminClient();
   if (!admin) return { error: 'Invitations are unavailable.' };
-  // Only the verified session user is passed to this service-only function.
-  const { data: expires, error } = await admin.rpc('create_employee_invitation', { p_employee_id: user.id, p_hash: hash });
+  const { data: expires, error } = await admin.rpc('create_employee_invitation', {
+    p_organization_id: orgId, p_employee_id: user.id, p_hash: hash,
+  });
   if (error || !expires) return { error: 'Could not create an invitation. Check your account or try again later.' };
   // The raw code is displayed only once and is not stored in our database.
   const link = new URL('/apply', process.env.APP_ORIGIN);

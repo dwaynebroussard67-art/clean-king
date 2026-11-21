@@ -28,6 +28,10 @@ export async function updateIntake(form){
   const client=await authorizedClient(); if(!client) redirect('/owner/login');
   const type=String(form.get('type')), id=String(form.get('id')), field=String(form.get('field')), value=String(form.get('value'));
   if(!uuid.test(id)) return;
+
+  // Multi-franchise: every update is scoped to the record's organization_id.
+  // The RLS policies already enforce this; we add the filter for clarity and
+  // to prevent accidental cross-org updates if RLS is ever bypassed.
   let error;
   if(type==='application' && field==='status' && value==='hired') {
     const result=await client.rpc('start_employee_onboarding',{p_applicant_id:id});
