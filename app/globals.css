@@ -304,7 +304,9 @@ html,body,.public-page{background:#faf7f2;color:var(--ink)}
 /* Reduce motion for accessibility */
 @media (prefers-reduced-motion: reduce) {
   .bubble,
-  .scrub-bubble.scrub-move {
+  .scrub-bubble.scrub-move,
+  .char-bubble,
+  .char-bubble-node {
     animation: none !important;
     opacity: var(--b-opacity, 0.4) !important;
     transform: none !important;
@@ -313,6 +315,155 @@ html,body,.public-page{background:#faf7f2;color:var(--ink)}
     display: none;
   }
 }
+
+/* Character bubble — "she" is one bubble at rest, a vibrating cluster when thinking */
+.char-bubble {
+  position: relative;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: #fff;
+  border: 4px solid #d67a50;
+  box-shadow: 0 6px 18px rgba(214, 122, 80, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  z-index: 2;
+}
+
+.char-bubble-idle {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.9) 0%, #fff 55%, #eef4ee 100%);
+  border: 2px solid rgba(214, 122, 80, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: charFloat 4s ease-in-out infinite;
+}
+
+.char-bubble-face {
+  position: absolute;
+  top: 42%;
+  left: 48%;
+  display: flex;
+  gap: 6px;
+}
+
+.char-eye {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #294c3b;
+  animation: charBlink 4s ease-in-out infinite;
+}
+
+.char-eye:nth-child(2) {
+  animation-delay: 1s;
+}
+
+.char-mouth {
+  position: absolute;
+  top: 62%;
+  left: 50%;
+  width: 10px;
+  height: 4px;
+  border: 2px solid #d67a50;
+  border-top-color: transparent;
+  border-radius: 0 0 6px 6px;
+}
+
+@keyframes charFloat {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-8px) rotate(2deg); }
+}
+
+@keyframes charBlink {
+  0%, 92%, 100% { transform: scaleY(1); }
+  95% { transform: scaleY(0.05); }
+}
+
+@keyframes charVibrate {
+  0%, 100% { transform: translate(0, 0) scale(1) rotate(0deg); }
+  12.5% { transform: translate(4px, -4px) scale(1.1) rotate(6deg); }
+  25% { transform: translate(-4px, 4px) scale(0.9) rotate(-6deg); }
+  37.5% { transform: translate(4px, 4px) scale(1.05) rotate(4deg); }
+  50% { transform: translate(-4px, -4px) scale(0.95) rotate(-4deg); }
+  62.5% { transform: translate(0, 6px) scale(1.1) rotate(6deg); }
+  75% { transform: translate(6px, 0) scale(0.9) rotate(-6deg); }
+  87.5% { transform: translate(-6px, 0) scale(1.05) rotate(4deg); }
+}
+
+.char-bubble.thinking .char-bubble-idle {
+  display: none;
+}
+
+.char-bubble.thinking .char-bubble-nodes {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.char-bubble-node {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.9) 0%, #fff 60%, #eef4ee 100%);
+  border: 2px solid rgba(214, 122, 80, 0.5);
+  box-shadow: 0 2px 8px rgba(214, 122, 80, 0.35);
+  animation: charVibrate 0.5s ease-in-out infinite;
+}
+
+.char-bubble-node:nth-child(2) { animation-delay: 0.08s; background: #fef9e7; border-color: #f0d97a; }
+.char-bubble-node:nth-child(3) { animation-delay: 0.16s; background: #edf4e9; border-color: #9cbb8a; }
+.char-bubble-node:nth-child(4) { animation-delay: 0.24s; background: #f7f8f3; border-color: #c7ad6c; }
+.char-bubble-node:nth-child(5) { animation-delay: 0.32s; background: #eef4ee; border-color: #a7be93; }
+
+.char-bubble-thought {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #c7ad6c;
+  border: 2px solid #fff;
+  box-shadow: 0 0 8px rgba(199, 173, 108, 0.5);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.char-bubble.thinking .char-bubble-thought {
+  opacity: 1;
+  animation: charPulse 1.2s ease-in-out infinite;
+}
+
+@keyframes charPulse {
+  0%, 100% { transform: scale(1); opacity: 0.9; }
+  50% { transform: scale(1.3); opacity: 0.6; }
+}
+
+.chat-char-bubble {
+  width: 30px;
+  height: 30px;
+  border-width: 2px;
+  transform: scale(0.85);
+  transform-origin: center;
+}
+
+.assistant-char-bubble {
+  position: absolute;
+  bottom: 18px;
+  right: 22px;
+  width: 64px;
+  height: 64px;
+}
+
 .owner-pagination{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}.owner-pagination a{text-decoration:none}
 .onboarding-card{margin-top:14px;padding:15px;background:#fbf6ef;border:1px solid #eadcd2;border-radius:8px}.onboarding-card h4{font-size:13px}.onboarding-card p{margin-top:7px;color:#705c55;font-size:12px;line-height:1.5}.onboarding-card ul{list-style:none;padding:0;margin:12px 0 0;display:grid;gap:9px}.onboarding-card li{display:flex;gap:10px;align-items:center;justify-content:space-between;font-size:12px;line-height:1.5}.onboarding-card li form{flex-shrink:0}@media(max-width:480px){.onboarding-card li{align-items:flex-start;flex-direction:column}}
 /* Meeting workspace controls: example-only and never submitted to a server. */
