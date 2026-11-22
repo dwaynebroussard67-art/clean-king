@@ -33,9 +33,13 @@ create policy "Users see their organizations" on public.organizations for select
 drop policy if exists "Owners can see their own membership" on public.owner_memberships;
 alter table public.owner_memberships drop constraint if exists owner_memberships_pkey;
 alter table public.owner_memberships add column if not exists organization_id uuid not null references public.organizations(id) on delete restrict;
-alter table public.owner_memberships add primary key if not exists (user_id, organization_id);
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conname = 'owner_memberships_pkey') then
+    alter table public.owner_memberships add primary key (user_id, organization_id);
+  end if;
+end $$;
 alter table public.owner_memberships add column if not exists role text not null default 'owner' check (role in ('owner','manager'));
-alter table public.owner_memberships alter column created_at drop default if exists;
 alter table public.owner_memberships alter column created_at set default now();
 
 -- Re-validate: every owner membership now belongs to an organization.
@@ -147,7 +151,12 @@ revoke all on function public.audit_intake_change() from public, anon, authentic
 -- Employee memberships -> add organization_id
 -- ---------------------------------------------------------------------------
 alter table public.employee_memberships add column if not exists organization_id uuid not null references public.organizations(id) on delete restrict;
-alter table public.employee_memberships add primary key if not exists (user_id, organization_id);
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conname = 'employee_memberships_pkey') then
+    alter table public.employee_memberships add primary key (user_id, organization_id);
+  end if;
+end $$;
 create index if not exists employee_memberships_organization_idx on public.employee_memberships(organization_id);
 
 drop policy if exists "Employee sees own membership" on public.employee_memberships;
