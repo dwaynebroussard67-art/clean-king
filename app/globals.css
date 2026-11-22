@@ -301,19 +301,47 @@ html,body,.public-page{background:#faf7f2;color:var(--ink)}
   font-size: 1.25rem;
 }
 
-/* Reduce motion for accessibility */
+/* Reduce motion for accessibility — hide bubbles instead of leaving them static over text */
 @media (prefers-reduced-motion: reduce) {
   .bubble,
   .scrub-bubble.scrub-move,
   .char-bubble,
   .char-bubble-node {
-    animation: none !important;
-    opacity: var(--b-opacity, 0.4) !important;
-    transform: none !important;
+    display: none !important;
   }
   .btn.bubble-btn::after {
     display: none;
   }
+}
+
+/* Visually hidden screen-reader text */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Page-wide bubble background behind content */
+.page-bubbles {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Contained bubbles for service cards — uses cqh units, stays inside card */
+.bubbles-bg.contained {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.4;
 }
 
 /* Character bubble — "she" is one bubble at rest, a vibrating cluster when thinking */
