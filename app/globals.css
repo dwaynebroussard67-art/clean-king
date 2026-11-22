@@ -96,6 +96,338 @@ html,body,.public-page{background:#faf7f2;color:var(--ink)}
 .candidate-row small,.row-status,.candidate-top p,.detail small,.eligibility p,.toggle small,.reset-link,.muted,.site-tabs button,.shift-card p,.bench-person small,.person-status,.fine-print,.empty-log,.service-card p,.about-copy>p,.about-note strong,.about-note p,.settings-row p{color:#705c55}.avatar-1{color:#834739}.avatar-2{color:#79552d}.lesson-number{color:#80513d}
 .application-fields:not([hidden]),.experience-fields{display:grid;gap:17px}.application-fields label,.experience-fields label{font-size:12px;font-weight:700;color:#465c4d}.experience-fields{padding:17px;border:1px solid #eadcd2;border-radius:8px}.experience-fields h2,.application-review h2{font-size:16px;line-height:1.4}.application-review dl{display:grid;gap:10px;margin:16px 0}.application-review dl>div{border-bottom:1px solid #eadcd2;padding-bottom:8px}.application-review dt{font-size:11px;font-weight:700;color:#705c55}.application-review dd{margin:4px 0 0;font-size:13px;overflow-wrap:anywhere}
 .public-form .form-note,.public-form .consent{color:#705c55;font-size:12px}
+
+/* ==========================================================================
+   BUBBLES EVERYWHERE — animated bubble background system
+   ========================================================================== */
+
+.bubbles-bg {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.bubble {
+  position: absolute;
+  border-radius: 50%;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.55) 0%,
+    rgba(255, 255, 255, 0.15) 40%,
+    rgba(213, 233, 165, 0.35) 100%
+  );
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 0 14px rgba(135, 170, 113, 0.25);
+  opacity: 0;
+  animation: bubbleRise var(--b-duration) ease-in-out infinite,
+             bubbleWobble var(--b-wobble) ease-in-out infinite;
+}
+
+@keyframes bubbleRise {
+  0%   { transform: translateY(var(--b-start-y)) scale(var(--b-scale)); opacity: 0; }
+  10%  { opacity: var(--b-opacity); }
+  90%  { opacity: var(--b-opacity); }
+  100% { transform: translateY(var(--b-end-y)) scale(var(--b-scale)); opacity: 0; }
+}
+
+@keyframes bubbleWobble {
+  0%, 100% { transform: translateX(0) scale(var(--b-scale)); }
+  33%      { transform: translateX(var(--b-wobble-x)) scale(var(--b-scale) * 1.05); }
+  66%      { transform: translateX(calc(var(--b-wobble-x) * -0.6)) scale(var(--b-scale) * 0.95); }
+}
+
+/* Scrubbing bubble characters — little bubbles with a cleaning motif */
+.scrub-bubble {
+  position: absolute;
+  border-radius: 50%;
+  background: #fff;
+  border: 3px solid #d67a50;
+  box-shadow: 0 4px 12px rgba(214, 122, 80, 0.35);
+  pointer-events: none;
+  z-index: 1;
+  overflow: hidden;
+}
+
+.scrub-bubble::before {
+  content: "";
+  position: absolute;
+  inset: 25%;
+  border: 2px solid #d67a50;
+  border-radius: 50%;
+}
+
+.scrub-bubble::after {
+  content: "🧽";
+  position: absolute;
+  bottom: 12%;
+  right: 12%;
+  font-size: 0.55rem;
+  opacity: 0.9;
+}
+
+.scrub-bubble.scrub-move {
+  animation: scrubMove var(--s-duration) ease-in-out infinite alternate;
+}
+
+@keyframes scrubMove {
+  0%  { transform: translate(0, 0) rotate(0deg); }
+  50% { transform: translate(6px, -4px) rotate(6deg); }
+  100% { transform: translate(-4px, 6px) rotate(-4deg); }
+}
+
+/* Bubble badge / pill accents */
+.bubble-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 8px;
+  border-radius: 20px;
+  background: #fef9e7;
+  border: 1px solid #f0d97a;
+  color: #7d6b00;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.bubble-badge::before {
+  content: "✳";
+  font-size: 0.85rem;
+}
+
+/* Bubble button treatment */
+.btn.bubble-btn {
+  position: relative;
+  overflow: hidden;
+}
+
+.btn.bubble-btn::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  background: rgba(255, 255, 255, 0.35);
+  border-radius: 50%;
+  transition: width 0.3s ease-out, height 0.3s ease-out;
+}
+
+.btn.bubble-btn:active::after {
+  width: 140%;
+  height: 140%;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+/* Bubble card overlay for imagery */
+.bubble-card-overlay {
+  position: relative;
+  overflow: hidden;
+  border-radius: 10px;
+}
+
+.bubble-card-overlay::after {
+  content: "";
+  position: absolute;
+  top: -20%;
+  left: -20%;
+  width: 60%;
+  height: 60%;
+  background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.45) 0%, transparent 55%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Bubbles hero section */
+.bubbles-hero {
+  position: relative;
+  overflow: hidden;
+  border-radius: 12px;
+  min-height: 260px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 40px 24px;
+  color: #fff;
+  background: linear-gradient(135deg, #294c3b 0%, #17352a 55%, #1d3c30 100%);
+}
+
+.bubbles-hero h2 {
+  font-family: 'Manrope', sans-serif;
+  font-size: clamp(24px, 5vw, 34px);
+  letter-spacing: -1px;
+  margin: 0 0 10px;
+  position: relative;
+  z-index: 2;
+}
+
+.bubbles-hero p {
+  font-size: clamp(12px, 3vw, 14px);
+  opacity: 0.9;
+  margin: 0;
+  position: relative;
+  z-index: 2;
+}
+
+.bubbles-hero .bubbles-bg {
+  z-index: 1;
+}
+
+/* Bubble dividers */
+.bubble-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 24px 0;
+  color: #9cbb8a;
+  font-size: 0.85rem;
+  font-weight: 800;
+  letter-spacing: 1px;
+}
+
+.bubble-divider::before,
+.bubble-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: #e4e9e1;
+}
+
+.bubble-divider span {
+  font-size: 1.25rem;
+}
+
+/* Reduce motion for accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .bubble,
+  .scrub-bubble.scrub-move,
+  .char-bubble,
+  .char-bubble-node {
+    animation: none !important;
+    opacity: var(--b-opacity, 0.4) !important;
+    transform: none !important;
+  }
+  .btn.bubble-btn::after {
+    display: none;
+  }
+}
+
+/* Character bubble — "she" is one bubble at rest, a vibrating cluster when thinking */
+.char-bubble {
+  position: relative;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: #fff;
+  border: 4px solid #d67a50;
+  box-shadow: 0 6px 18px rgba(214, 122, 80, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  z-index: 2;
+}
+
+.char-bubble-idle {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.9) 0%, #fff 50%, rgba(238,244,238,0.7) 100%);
+  border: 2px solid rgba(214, 122, 80, 0.5);
+  box-shadow: 0 2px 10px rgba(214, 122, 80, 0.25);
+  animation: charFloat 4s ease-in-out infinite;
+}
+
+@keyframes charFloat {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-8px) rotate(2deg); }
+}
+
+@keyframes charVibrate {
+  0%, 100% { transform: translate(0, 0) scale(1) rotate(0deg); }
+  12.5% { transform: translate(4px, -4px) scale(1.1) rotate(6deg); }
+  25% { transform: translate(-4px, 4px) scale(0.9) rotate(-6deg); }
+  37.5% { transform: translate(4px, 4px) scale(1.05) rotate(4deg); }
+  50% { transform: translate(-4px, -4px) scale(0.95) rotate(-4deg); }
+  62.5% { transform: translate(0, 6px) scale(1.1) rotate(6deg); }
+  75% { transform: translate(6px, 0) scale(0.9) rotate(-6deg); }
+  87.5% { transform: translate(-6px, 0) scale(1.05) rotate(4deg); }
+}
+
+.char-bubble.thinking .char-bubble-idle {
+  display: none;
+}
+
+.char-bubble.thinking .char-bubble-nodes {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.char-bubble-node {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.9) 0%, #fff 60%, #eef4ee 100%);
+  border: 2px solid rgba(214, 122, 80, 0.5);
+  box-shadow: 0 2px 8px rgba(214, 122, 80, 0.35);
+  animation: charVibrate 0.5s ease-in-out infinite;
+}
+
+.char-bubble-node:nth-child(2) { animation-delay: 0.08s; background: #fef9e7; border-color: #f0d97a; }
+.char-bubble-node:nth-child(3) { animation-delay: 0.16s; background: #edf4e9; border-color: #9cbb8a; }
+.char-bubble-node:nth-child(4) { animation-delay: 0.24s; background: #f7f8f3; border-color: #c7ad6c; }
+.char-bubble-node:nth-child(5) { animation-delay: 0.32s; background: #eef4ee; border-color: #a7be93; }
+
+.char-bubble-thought {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #c7ad6c;
+  border: 2px solid #fff;
+  box-shadow: 0 0 8px rgba(199, 173, 108, 0.5);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.char-bubble.thinking .char-bubble-thought {
+  opacity: 1;
+  animation: charPulse 1.2s ease-in-out infinite;
+}
+
+@keyframes charPulse {
+  0%, 100% { transform: scale(1); opacity: 0.9; }
+  50% { transform: scale(1.3); opacity: 0.6; }
+}
+
+.chat-char-bubble {
+  width: 30px;
+  height: 30px;
+  border-width: 2px;
+  transform: scale(0.85);
+  transform-origin: center;
+}
+
+.assistant-char-bubble {
+  position: absolute;
+  bottom: 18px;
+  right: 22px;
+  width: 64px;
+  height: 64px;
+}
+
+.pitch-dial{display:flex;align-items:center;gap:12px;margin-top:8px}.pitch-dial input[type=range]{-webkit-appearance:none;width:140px;height:6px;border-radius:3px;background:#d8e5d3;outline:none;opacity:0.8;transition:opacity .2s}.pitch-dial input[type=range]:hover{opacity:1}.pitch-dial input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:18px;height:18px;border-radius:50%;background:#d67a50;cursor:pointer;box-shadow:0 2px 6px rgba(214,122,80,0.4)}.pitch-dial span{min-width:32px;text-align:right;font-size:11px;font-weight:800;color:#d67a50}
+
 .owner-pagination{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}.owner-pagination a{text-decoration:none}
 .onboarding-card{margin-top:14px;padding:15px;background:#fbf6ef;border:1px solid #eadcd2;border-radius:8px}.onboarding-card h4{font-size:13px}.onboarding-card p{margin-top:7px;color:#705c55;font-size:12px;line-height:1.5}.onboarding-card ul{list-style:none;padding:0;margin:12px 0 0;display:grid;gap:9px}.onboarding-card li{display:flex;gap:10px;align-items:center;justify-content:space-between;font-size:12px;line-height:1.5}.onboarding-card li form{flex-shrink:0}@media(max-width:480px){.onboarding-card li{align-items:flex-start;flex-direction:column}}
 /* Meeting workspace controls: example-only and never submitted to a server. */
