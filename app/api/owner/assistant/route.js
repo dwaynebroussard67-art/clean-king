@@ -23,8 +23,8 @@ async function getTenantId(session, user) {
     .select('organization_id')
     .eq('user_id', user.id)
     .limit(1);
-  if (memberships?.data?.length > 0) {
-    return memberships.data[0].organization_id;
+  if (memberships?.length > 0) {
+    return memberships[0].organization_id;
   }
   return null;
 }

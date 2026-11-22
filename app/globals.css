@@ -121,21 +121,21 @@ html,body,.public-page{background:#faf7f2;color:var(--ink)}
   border: 1px solid rgba(255, 255, 255, 0.5);
   box-shadow: 0 0 14px rgba(135, 170, 113, 0.25);
   opacity: 0;
-  animation: bubbleRise var(--b-duration) ease-in-out infinite,
-             bubbleWobble var(--b-wobble) ease-in-out infinite;
+  animation-name: bubbleFloat;
+  animation-duration: var(--b-duration);
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  animation-delay: var(--b-delay, 0s);
 }
 
-@keyframes bubbleRise {
-  0%   { transform: translateY(var(--b-start-y)) scale(var(--b-scale)); opacity: 0; }
+@keyframes bubbleFloat {
+  0%   { transform: translateY(var(--b-start-y)) translateX(0) scale(var(--b-scale)); opacity: 0; }
   10%  { opacity: var(--b-opacity); }
+  25%  { transform: translateY(calc(var(--b-start-y) * 0.75)) translateX(var(--b-wobble-x)) scale(calc(var(--b-scale) * 1.05)); }
+  50%  { transform: translateY(calc(var(--b-start-y) * 0.5)) translateX(calc(var(--b-wobble-x) * -0.6)) scale(calc(var(--b-scale) * 0.95)); opacity: var(--b-opacity); }
+  75%  { transform: translateY(calc(var(--b-start-y) * 0.25)) translateX(var(--b-wobble-x)) scale(calc(var(--b-scale) * 1.05)); }
   90%  { opacity: var(--b-opacity); }
-  100% { transform: translateY(var(--b-end-y)) scale(var(--b-scale)); opacity: 0; }
-}
-
-@keyframes bubbleWobble {
-  0%, 100% { transform: translateX(0) scale(var(--b-scale)); }
-  33%      { transform: translateX(var(--b-wobble-x)) scale(var(--b-scale) * 1.05); }
-  66%      { transform: translateX(calc(var(--b-wobble-x) * -0.6)) scale(var(--b-scale) * 0.95); }
+  100% { transform: translateY(var(--b-end-y)) translateX(0) scale(var(--b-scale)); opacity: 0; }
 }
 
 /* Scrubbing bubble characters — little bubbles with a cleaning motif */
