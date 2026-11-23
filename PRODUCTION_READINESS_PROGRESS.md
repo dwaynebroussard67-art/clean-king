@@ -1,7 +1,8 @@
 # Production-readiness progress
 
-**Current branch:** `arena/dde69278-clean-king`
-**Baseline:** main at `a0d49839e1b6ef931ca203ea7de64fa67909ffe3`
+**Current branch:** `arena/67070e31-clean-king`
+**Baseline:** main at `ebb429ae19699dc3977e7f0700c67bcefa5e9257`
+**Latest verification:** 2026-11-23 — 115 local Node/PGlite tests pass, including new fresh-apply and two-franchise isolation suites.
 **Status:** integration fixes and local verification only, **not ready for real customers, employees, or applicant data**. This describes local code and test results, not a deployment. No connected project was selected or changed.
 
 ## Work completed in this iteration
@@ -76,3 +77,17 @@ Approaches considered (1–5: correctness / efficiency / maintainability / secur
 This branch adds a database-side global owner emergency stop and individual suspension, a privacy-preserving employee referral-link revocation flow, and serialization between owner assistant quota changes and request admission. See `LAUNCH_READINESS.md` for their exact scope, privileged-operator procedure, tradeoffs and the three-day staging/launch plan. The owner stop does not stop service-role/administrator access, employee flows, intake or already-running operations. The new forward migrations are local only and must be tested and applied in order to an approved dedicated project; they do not make production authentication or the real referral journey operational.
 
 After a clean install, 113 local Node/PGlite tests, 10 mocked browser tests, a production build and fail-closed smoke checks passed; the dependency audit reported zero vulnerabilities. The browser suite did not exercise the new authenticated referral-management screen. No remote migrations, live Supabase/PostgREST, provider, real email/Turnstile, actual concurrent Postgres or two-device integration tests were performed. The normal browser suite emitted nonfatal sandbox preload warnings. A real production rollout still requires the gates in `LAUNCH_READINESS.md` and owner approval.
+
+
+## Red-team remediation follow-up (2026-11-23)
+
+Driven by the deeper red-team review. This branch hardens the local foundations; it does **not** make the system launch-ready and nothing was deployed.
+
+- **Migrations now apply cleanly from scratch.** `test/migrations-clean-apply.test.mjs` applies the whole ordered migration chain to a fresh embedded Postgres and re-applies the organizations migration to prove idempotency. The organizations migration previously failed on a duplicated `returns boolean` and leaked global emergency-stop semantics; `audit_log.organization_id` is now nullable (global events have no franchise) and `current_organization_id()` is gated on the emergency stop. Table re-grants now include `organization_id`.
+- **Cross-tenant isolation is now tested.** `test/cross-tenant-database.test.mjs` seeds two franchises and asserts RLS isolation for owners, employees, applicants, leads, referral attributions, audit rows, and the emergency stop. Owner-facing RLS now authorizes via `owns_organization(...)` (membership + active org + emergency stop disengaged) instead of a mutable "current selection", so multi-franchise owners can read every franchise they own and the UI's `?org=` switcher is enforced rather than decorative. RPCs (`set_applicant_status`, `start_employee_onboarding`, `record_onboarding_task`) derive the franchise from the target row and authorize against memberships; they never trust a client-provided org.
+- **Dead, unaudited provider code removed.** The disconnected Bubbles handler (`lib/server/bubbles-handler.mjs`), the unused provider key vault (`lib/server/provider-key-vault.mjs` and its migration), the Lite/adapter layer and the AI-provider test were deleted rather than repaired: `/api/owner/assistant` now routes exclusively through the audited `owner-assistant-handler` (admission-controlled `begin_assistant_run`, fail-closed settings, DNS-pinned custom endpoints, no content logging). The unused `tenant_ai_*` objects shipped with the vault are gone with it.
+- **Bounded authorization fix in the owner inbox.** `app/owner/page.js` used `params` before declaration (temporal dead zone) and could not render for an authenticated owner; fixed. The owner audit view (`/owner/audit`) shows the latest 100 franchise-scoped events without applicant contact details, with print CSS; global emergency-stop events are intentionally excluded.
+- **Security headers and CSP** added in `next.config.mjs` (default-src 'self'; Cloudflare Turnstile and Supabase allowlisted; object-src 'none'; frame-ancestors 'none'; HSTS; nosniff; referrer and permissions policies). Global `Google Fonts` `@import` removed; system font stack used instead (no third-party request, no referrer leak).
+- **Every page now carries a persistent synthetic-demo banner** (`app/layout.js`), hidden only for print.
+- **Missing governance files added:** `LICENSE` (proprietary, all rights reserved), `CODEOWNERS` (all changes require the business owner), `SECURITY.md` (reporting path, scope, no-real-data rule). CI actions are pinned to full-length commit SHAs.
+- Earlier sections of this document describe the branch at the time they were written (including "113 tests"); the current count is **115 passing** (`npm test`).

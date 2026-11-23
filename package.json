@@ -8,7 +8,8 @@
     "start": "next start --hostname 0.0.0.0",
     "test": "node --test",
     "test:e2e": "playwright test",
-    "test:production": "node scripts/production-smoke.mjs"
+    "test:production": "node scripts/production-smoke.mjs",
+    "audit:secrets": "node scripts/secret-scan.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",

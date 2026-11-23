@@ -11,12 +11,15 @@ function Bi({ en, es }) { return <>{en} / {es}</>; }
 function Action({ type, id, field, value, children }) {
   return <form action={updateIntake}><input type="hidden" name="type" value={type}/><input type="hidden" name="id" value={id}/><input type="hidden" name="field" value={field}/><input type="hidden" name="value" value={value}/><button className="btn light small">{children}</button></form>;
 }
-function OrgSwitcher({ orgs, selectedId, onSelect }) {
+// Server-rendered GET form: no client JS required to switch franchises.
+function OrgSwitcher({ orgs, selectedId }) {
   if (!orgs || orgs.length <= 1) return null;
-  return <div className="org-switcher"><span className="mini-label"><Bi en="Franchise:" es="Franchicia:"/></span>
-    <select value={selectedId} onChange={(e) => onSelect(e.target.value)} aria-label="Select franchise">
+  return <form className="org-switcher" method="get" action="/owner"><label className="mini-label" htmlFor="org-select"><Bi en="Franchise:" es="Franchicia:"/></label>
+    <select id="org-select" name="org" defaultValue={selectedId} aria-label="Select franchise">
       {orgs.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
-    </select></div>;
+    </select>
+    <button className="btn light small" type="submit"><Bi en="Switch" es="Cambiar"/></button>
+  </form>;
 }
 
 export default async function Owner({ searchParams }) {
@@ -37,11 +40,12 @@ export default async function Owner({ searchParams }) {
     .in('id', orgIds);
   if (!orgs || orgs.length === 0) return <div className="public-page"><PublicHeader/><main className="public-main"><div className="public-card"><h1><Bi en="No franchises found." es="No se encontraron Franquicias."/></h1><form action={signOut}><button className="btn light"><Bi en="Sign out" es="Cerrar sesión"/></button></form></div></main></div>;
 
-  const selectedOrgId = (params.org && orgIds.includes(params.org)) ? params.org
-    : orgs.find((o) => o.status === 'active')?.id ?? orgs[0].id;
-  const selectedOrg = orgs.find((o) => o.id === selectedOrgId);
-
   const params = await searchParams;
+  const requestedOrg = typeof params.org === 'string' ? params.org : null;
+  const selectedOrgId = requestedOrg && orgIds.includes(requestedOrg) && orgs.some((o) => o.id === requestedOrg)
+    ? requestedOrg
+    : (orgs.find((o) => o.status === 'active') ?? orgs[0]).id;
+  const selectedOrg = orgs.find((o) => o.id === selectedOrgId);
   const appCursor = decodeCursor(params.apps), leadCursor = decodeCursor(params.leads);
   const invalidCursor = (params.apps && !appCursor) || (params.leads && !leadCursor);
   const pageSize = 25;
@@ -90,11 +94,11 @@ export default async function Owner({ searchParams }) {
   return <div className="public-page"><PublicHeader/><main className="owner-main">
     <div className="owner-heading"><div>
       <div className="mini-label"><Bi en="OWNER WORKSPACE · DEVELOPMENT ACCESS" es="ESPACIO DEL PROPIETARIO · ACCESO DE DESARROLLO"/></div>
-      {orgs.length > 1 && <OrgSwitcher orgs={orgs} selectedId={selectedOrgId} onSelect={(id) => { const u = new URLSearchParams(params); u.set('org', id); window.location.href = `/owner?${u.toString()}`; }}/>}
+      {orgs.length > 1 && <OrgSwitcher orgs={orgs} selectedId={selectedOrgId}/>}
       <h1><Bi en="Intake inbox." es="Bandeja de solicitudes."/></h1>
       {selectedOrg && orgs.length > 1 && <p className="public-intro"><Bi en={`Franchising: ${selectedOrg.name}`} es={`Franchicia: ${selectedOrg.name}`}/></p>}
       <p className="public-intro"><Bi en="Applications and quote requests are stored privately. These controls do not send texts." es="Las solicitudes de empleo y presupuestos se guardan de forma privada. Estos controles no envían mensajes de texto."/></p>
-    </div><div className="owner-heading-actions"><Link className="btn dark" href="/owner/assistant"><Bi en="Owner assistant" es="Asistente del propietario"/></Link><form action={signOut}><button className="btn light"><Bi en="Sign out" es="Cerrar sesión"/></button></form></div></div>
+    </div><div className="owner-heading-actions"><Link className="btn dark" href="/owner/assistant"><Bi en="Owner assistant" es="Asistente del propietario"/></Link><Link className="btn light" href={requestedOrg ? `/owner/audit?org=${selectedOrgId}` : '/owner/audit'}><Bi en="Audit log" es="Registro de auditoría"/></Link><form action={signOut}><button className="btn light"><Bi en="Sign out" es="Cerrar sesión"/></button></form></div></div>
     <div className="inline-notice"><Bi en="Email-link access is temporary and does not meet the passkey or approved-device requirements for launch." es="El acceso mediante enlace de correo es temporal y no cumple los requisitos de llaves de acceso ni de dispositivos aprobados para el lanzamiento."/></div>
     {params.error && <p className="form-error" role="alert"><Bi en="The update could not be saved. Please try again." es="No se pudo guardar el cambio. Inténtalo de nuevo."/></p>}
     {invalidCursor && <p className="form-error" role="alert"><Bi en="The page link was invalid; showing the latest records for that section." es="El enlace de la página no era válido; se muestran los registros más recientes de esa sección."/></p>}
