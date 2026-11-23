@@ -11,7 +11,7 @@ const PATTERNS = [
   ['GitHub OAuth token', /gho_[A-Za-z0-9]{20,}/],
   ['Slack token', /xox[abprs]-[A-Za-z0-9-]{10,}/],
   ['Private key block', /-----BEGIN (?:RSA |EC |OPENSSH |PGP |ENCRYPTED )?PRIVATE KEY-----/],
-  ['Anthropic API key', /sk-ant-[A-Za-z0-9-]{20,}/],
+  ['Anthropic API key', /sk-ant-(api|oat|admin)[0-9]{2}-[A-Za-z0-9_-]{20,}/],
   ['OpenAI API key', /sk-[A-Za-z0-9_-]{20,}T3BlbkFJ/],
   ['Supabase service role JWT', /eyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/],
 ];

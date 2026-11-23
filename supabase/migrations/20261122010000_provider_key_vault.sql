@@ -24,7 +24,7 @@ grant insert, update, delete on public.tenant_ai_providers to service_role;
 
 -- Tenants see only their own providers.
 create policy "Tenants see own providers" on public.tenant_ai_providers for select to authenticated
-  using (tenant_id = (select public.current_organization_id()));
+  using ((select public.owns_organization(tenant_id)));
 
 -- ---------------------------------------------------------------------------
 -- tenant_ai_budget: per-tenant monthly dollar budget
@@ -43,7 +43,7 @@ grant select on public.tenant_ai_budget to authenticated;
 grant insert, update, delete on public.tenant_ai_budget to service_role;
 
 create policy "Tenants see own budget" on public.tenant_ai_budget for select to authenticated
-  using (tenant_id = (select public.current_organization_id()));
+  using ((select public.owns_organization(tenant_id)));
 
 -- ---------------------------------------------------------------------------
 -- assistant_action_audit: every proposed/approved/executed action is logged
@@ -66,7 +66,7 @@ grant select on public.assistant_action_audit to authenticated;
 grant insert on public.assistant_action_audit to service_role;
 
 create policy "Tenants see own action audit" on public.assistant_action_audit for select to authenticated
-  using (tenant_id = (select public.current_organization_id()));
+  using ((select public.owns_organization(tenant_id)));
 
 -- ---------------------------------------------------------------------------
 -- RPC: check and increment budget spend. Fails closed when budget exceeded.
