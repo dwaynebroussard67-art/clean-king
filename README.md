@@ -2,6 +2,10 @@
 
 A Phase 0 demo inspired by the owner-provided Build Dossier. Goodwork is a placeholder name, not an assertion of franchise affiliation. All applicants, crew, shifts, metrics, sites and activity are invented. No customer or franchisor marks are used.
 
+## Security
+
+See [SECURITY.md](SECURITY.md). Vulnerabilities should be reported privately through a GitHub security advisory; there is no staffed 24/7 contact yet. The system is a synthetic demonstration — do not enter real data, and see `RED_TEAM_REVIEW.md` and `LAUNCH_READINESS.md` for the gates that must pass before any real use. Every page carries a demo banner; owners can review franchise-scoped activity at `/owner/audit`.
+
 ## Run locally
 
 Requires Node.js 22 or newer (the installed Supabase SDK requires Node 22).

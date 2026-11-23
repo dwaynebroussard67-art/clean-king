@@ -39,7 +39,7 @@ alter table public.onboarding_items enable row level security;
 revoke all on public.onboarding_items from public, anon, authenticated, service_role;
 grant select on public.onboarding_items to authenticated;
 create policy "Owners read own org items" on public.onboarding_items for select to authenticated
-  using (organization_id = (select public.current_organization_id()));
+  using ((select public.owns_organization(organization_id)));
 
 -- ---------------------------------------------------------------------------
 -- Tier 2: ciphertext only. authenticated may read masked METADATA; nobody can select ciphertext directly.
@@ -64,7 +64,7 @@ alter table public.sensitive_items enable row level security;
 revoke all on public.sensitive_items from public, anon, authenticated, service_role;
 grant select (id, organization_id, subject_key, field_key, mask, source, created_at, updated_at) on public.sensitive_items to authenticated;
 create policy "Owners read own org sensitive metadata" on public.sensitive_items for select to authenticated
-  using (organization_id = (select public.current_organization_id()));
+  using ((select public.owns_organization(organization_id)));
 
 -- ---------------------------------------------------------------------------
 -- One-time links for people to enter their OWN secrets (employee SSN, direct deposit...).
@@ -85,7 +85,7 @@ alter table public.sensitive_requests enable row level security;
 revoke all on public.sensitive_requests from public, anon, authenticated, service_role;
 grant select (id, organization_id, subject_key, field_keys, expires_at, used_at, created_at) on public.sensitive_requests to authenticated;
 create policy "Owners read own org requests" on public.sensitive_requests for select to authenticated
-  using (organization_id = (select public.current_organization_id()));
+  using ((select public.owns_organization(organization_id)));
 
 -- ---------------------------------------------------------------------------
 -- Append-only access log. Every store / reveal / delete / rewrap lands here, inside the same transaction.
@@ -103,7 +103,7 @@ alter table public.vault_access_log enable row level security;
 revoke all on public.vault_access_log from public, anon, authenticated, service_role;
 grant select on public.vault_access_log to authenticated;
 create policy "Owners read own org vault log" on public.vault_access_log for select to authenticated
-  using (organization_id = (select public.current_organization_id()));
+  using ((select public.owns_organization(organization_id)));
 create function public.vault_log_immutable() returns trigger language plpgsql as $$
 begin raise exception 'vault_access_log is append-only'; end; $$;
 create trigger vault_log_no_change before update or delete on public.vault_access_log
@@ -113,10 +113,18 @@ create trigger vault_log_no_change before update or delete on public.vault_acces
 -- Functions. All SECURITY DEFINER with empty search_path; EXECUTE only for service_role.
 -- The server authenticates the owner first and passes p_actor; each function re-checks membership.
 -- ---------------------------------------------------------------------------
+-- Authorization chokepoint for every vault RPC. Requires an active owner
+-- membership on an active franchise while the emergency stop is disengaged;
+-- a suspended or stopped franchise's vault stays sealed even through the
+-- service-role path. (Managers are intentionally not authorized for vaults.)
 create function public.vault_actor_is_owner(p_org uuid, p_actor uuid) returns boolean
 language sql stable security definer set search_path = '' as $$
   select p_org is not null and p_actor is not null and exists (
-    select 1 from public.owner_memberships m where m.user_id = p_actor and m.organization_id = p_org);
+    select 1
+    from public.owner_memberships m
+    join public.organizations o on o.id = m.organization_id and o.status = 'active'
+    join public.owner_access_control c on c.singleton and c.enabled
+    where m.user_id = p_actor and m.organization_id = p_org and m.active and m.role = 'owner');
 $$;
 revoke all on function public.vault_actor_is_owner(uuid, uuid) from public, anon, authenticated, service_role;
 

@@ -1,7 +1,7 @@
 'use server';
 import { randomBytes, createHash } from 'node:crypto';
 import { revalidatePath } from 'next/cache';
-import { referralsEnabled, sessionClient, adminClient, currentOrganization } from '../../../lib/server/supabase';
+import { referralsEnabled, sessionClient, adminClient, employeeOrganization } from '../../../lib/server/supabase';
 import { revokeReferral } from '../../../lib/server/referral-revocation-handler.mjs';
 
 export async function revokeInvitation(_state, form) {
@@ -20,7 +20,7 @@ export async function createInvitation() {
   if (authError || !user) return { error: 'Sign-in is required.' };
 
   // Multi-franchise: invitations are scoped to the employee's organization.
-  const orgId = await currentOrganization(client);
+  const orgId = await employeeOrganization(client);
   if (!orgId) return { error: 'No franchise is associated with this account.' };
 
   const code = randomBytes(32).toString('hex');

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { readFile, readdir } from 'node:fs/promises';
 import { PGlite } from '@electric-sql/pglite';
 import { randomBytes } from 'node:crypto';
 import { createKeyring, generateOrgKey, wrapDek, unwrapDek, rewrapDek, seal, open, blindIndex, keyringFromEnv } from '../lib/server/envelope-vault.mjs';
@@ -101,16 +101,22 @@ async function freshDb() {
     create table auth.users(id uuid primary key);
     create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;
     grant usage on schema auth to authenticated,anon; grant execute on function auth.uid() to authenticated,anon;
-    -- Minimal stand-ins for the multi-franchise migration (its own tests are red; see blueprint).
-    create table public.organizations(id uuid primary key, name text);
-    create table public.owner_memberships(user_id uuid not null references auth.users(id), organization_id uuid not null references public.organizations(id), primary key(user_id, organization_id));
-    create function public.current_organization_id() returns uuid language sql stable security definer set search_path='' as $$ select organization_id from public.owner_memberships where user_id=(select auth.uid()) limit 1 $$;
-    grant execute on function public.current_organization_id() to authenticated;
-    grant usage on schema public to authenticated, service_role;
-    insert into auth.users values ('${OWNER}'),('${OWNER2}'),('${STRANGER}');
-    insert into public.organizations values ('${ORG}','A'),('${ORG2}','B');
-    insert into public.owner_memberships values ('${OWNER}','${ORG}'),('${OWNER2}','${ORG2}');`);
-  await db.exec(await readFile(new URL('../supabase/migrations/20261122020000_onboarding_vault.sql', import.meta.url), 'utf8'));
+    alter default privileges in schema public grant all on tables to anon, authenticated, service_role;
+    alter default privileges in schema public grant all on sequences to anon, authenticated, service_role;
+    alter default privileges in schema public grant execute on functions to anon, authenticated, service_role;`);
+  // Apply the real migration chain, not stubs: the vault migration depends on the
+  // organizations/membership schema and the shared owns_organization() authorization.
+  const folder = new URL('../supabase/migrations/', import.meta.url);
+  for (const name of (await readdir(folder)).filter((x) => x.endsWith('.sql')).sort()) {
+    await db.exec((await readFile(new URL(name, folder), 'utf8')).replace('create extension if not exists pgcrypto;', ''));
+  }
+  // Seed two synthetic franchises, one owner each, plus a stranger with no membership.
+  await db.query('insert into auth.users(id) values ($1),($2),($3)', [OWNER, OWNER2, STRANGER]);
+  await db.query(`insert into public.organizations(id, name, slug, owner_id, origin, status)
+    values ($1, 'Franchise A', 'franchise-a', $2, 'https://a.example.test', 'active'),
+           ($3, 'Franchise B', 'franchise-b', $4, 'https://b.example.test', 'active')`,
+    [ORG, OWNER, ORG2, OWNER2]);
+  await db.query('insert into public.owner_memberships(user_id, organization_id) values ($1,$3),($2,$4)', [OWNER, OWNER2, ORG, ORG2]);
   const as = async (role, sub) => { await db.exec(`reset role; set role ${role}; select set_config('request.jwt.claim.sub','${sub ?? ''}',false)`); };
   // The handler's rpc runs as service_role, exactly like the production admin client.
   const rpc = async (name, args) => {

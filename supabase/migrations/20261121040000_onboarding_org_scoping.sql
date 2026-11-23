@@ -9,13 +9,19 @@ alter table public.employee_onboarding add column if not exists organization_id 
 create index if not exists employee_onboarding_organization_idx on public.employee_onboarding(organization_id);
 alter table public.onboarding_tasks add column if not exists organization_id uuid not null references public.organizations(id) on delete restrict;
 
+-- Column-level grants from the base migration no longer cover the new column;
+-- without organization_id in the grant set, even owner reads of these tables fail
+-- with permission denied. Re-grant with the column included.
+grant select (id, applicant_id, started_by, started_at, organization_id) on public.employee_onboarding to authenticated;
+grant select (onboarding_id, task_code, status, recorded_by, recorded_at, organization_id) on public.onboarding_tasks to authenticated;
+
 -- Update policies to scope by organization.
 drop policy if exists "Owner reads onboarding" on public.employee_onboarding;
 drop policy if exists "Owner reads onboarding tasks" on public.onboarding_tasks;
 create policy "Owners read own org onboarding" on public.employee_onboarding for select to authenticated
-  using (organization_id = (select public.current_organization_id()));
+  using ((select public.owns_organization(organization_id)));
 create policy "Owners read own org onboarding tasks" on public.onboarding_tasks for select to authenticated
-  using (organization_id = (select public.current_organization_id()));
+  using ((select public.owns_organization(organization_id)));
 
 -- ---------------------------------------------------------------------------
 -- Rewrite set_applicant_status with organization scoping
@@ -24,15 +30,18 @@ create or replace function public.set_applicant_status(p_id uuid, p_status text)
 returns boolean
 language plpgsql security definer set search_path = ''
 as $$
-declare affected integer;
+declare affected integer; org uuid;
 begin
   if not public.is_business_owner() then raise exception 'Not authorized' using errcode='42501'; end if;
   if p_id is null or p_status is null or p_status not in ('new','later','screening','passed') then return false; end if;
-  -- Only allow status changes on applicants belonging to the owner's franchise.
+  -- Only allow status changes on applicants belonging to a franchise this owner owns.
+  org := null;
+  select organization_id into org from public.applicants where id = p_id;
+  if org is null or not public.owns_organization(org) then return false; end if;
   update public.applicants set status=p_status
     where id=p_id
       and status <> 'hired'
-      and organization_id = (select public.current_organization_id());
+      and organization_id = org;
   get diagnostics affected = row_count;
   return affected=1;
 end; $$;
@@ -51,11 +60,13 @@ declare applicant_status text; existing_id uuid; new_id uuid; actor uuid := (sel
 begin
   if not public.is_business_owner() or actor is null then raise exception 'Not authorized' using errcode='42501'; end if;
   if p_applicant_id is null then return query select 'not_found'::text,null::uuid; return; end if;
-  org := (select public.current_organization_id());
-  if org is null then raise exception 'No franchise selected' using errcode='42501'; end if;
-  -- Serialize competing hire attempts on the same applicant.
-  select status into applicant_status from public.applicants where id=p_applicant_id and organization_id=org for update;
+  -- Serialize competing hire attempts on the same applicant. The franchise is taken
+  -- from the applicant row, then authorized against this owner's memberships —
+  -- never from a mutable "current selection".
+  select organization_id into org from public.applicants where id=p_applicant_id for update;
   if not found then return query select 'not_found'::text,null::uuid; return; end if;
+  if not public.owns_organization(org) then return query select 'not_found'::text,null::uuid; return; end if;
+  select status into applicant_status from public.applicants where id=p_applicant_id and organization_id=org;
   select id into existing_id from public.employee_onboarding where applicant_id=p_applicant_id;
   if existing_id is not null then
     if applicant_status='hired' then return query select 'existing'::text,existing_id;
@@ -86,11 +97,10 @@ declare old_status text; new_status text; actor uuid := (select auth.uid());
 begin
   if not public.is_business_owner() or actor is null then raise exception 'Not authorized' using errcode='42501'; end if;
   if p_onboarding_id is null or p_recorded is null or p_task is null or p_task not in ('review_documents','plan_training','plan_first_shift') then return false; end if;
-  org := (select public.current_organization_id());
-  if org is null then return false; end if;
-  select status into old_status from public.onboarding_tasks
-    where onboarding_id=p_onboarding_id and task_code=p_task and organization_id=org for update;
+  select organization_id into org from public.onboarding_tasks
+    where onboarding_id=p_onboarding_id and task_code=p_task for update;
   if not found then return false; end if;
+  if not public.owns_organization(org) then return false; end if;
   new_status := case when p_recorded then 'recorded' else 'pending' end;
   if old_status=new_status then return true; end if;
   update public.onboarding_tasks set status=new_status,

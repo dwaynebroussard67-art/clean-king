@@ -52,12 +52,9 @@ declare
   ok_owner boolean;
 begin
   -- Re-check that p_actor is an owner of p_tenant.
-  select exists (
-    select 1 from public.owner_memberships m
-    where m.user_id = p_actor
-      and m.organization_id = p_tenant
-      and m.role = 'owner'
-  ) into ok_owner;
+  -- Same chokepoint as the onboarding vault: active owner membership, active
+  -- franchise, emergency stop disengaged.
+  select public.vault_actor_is_owner(p_tenant, p_actor) into ok_owner;
 
   if not ok_owner then
     return query select false, 'not_authorized';
@@ -83,9 +80,9 @@ begin
         key_version = excluded.key_version,
         updated_at = now();
 
-  -- Audit log entry (extend vault_access_log action check with provider_key_save).
-  insert into public.vault_access_log(actor_id, org_id, action, subject_key, field_key, created_at)
-  values (p_actor, p_tenant, 'provider_key_save', p_provider, 'api_key', now());
+  -- Audit log entry. vault_access_log(organization_id, actor_id, action, detail).
+  insert into public.vault_access_log(organization_id, actor_id, action, detail)
+  values (p_tenant, p_actor, 'provider_key_save', left(p_provider, 200));
 
   return query select true, null;
 end; $$;
@@ -96,6 +93,10 @@ grant execute on function public.save_provider_key(uuid, uuid, text, text, text,
 -- ---------------------------------------------------------------------------
 -- RPC: get_provider_key_ciphertext — return the sealed ciphertext only.
 -- ---------------------------------------------------------------------------
+-- NOTE: no p_actor parameter by design. Grant is service_role-only and the caller
+-- (server route) authenticates and authorizes the owner BEFORE invoking this;
+-- ciphertext is never usable without the org data key, which also lives behind
+-- service_role-only functions. Do not widen this grant.
 create or replace function public.get_provider_key_ciphertext(
   p_tenant uuid,
   p_provider text
@@ -128,12 +129,9 @@ as $$
 declare
   ok_owner boolean;
 begin
-  select exists (
-    select 1 from public.owner_memberships m
-    where m.user_id = p_actor
-      and m.organization_id = p_tenant
-      and m.role = 'owner'
-  ) into ok_owner;
+  -- Same chokepoint as the onboarding vault: active owner membership, active
+  -- franchise, emergency stop disengaged.
+  select public.vault_actor_is_owner(p_tenant, p_actor) into ok_owner;
 
   if not ok_owner then
     return query select false, 'not_authorized';
@@ -143,8 +141,8 @@ begin
   delete from public.tenant_ai_providers
   where tenant_id = p_tenant and provider_id = p_provider;
 
-  insert into public.vault_access_log(actor_id, org_id, action, subject_key, field_key, created_at)
-  values (p_actor, p_tenant, 'provider_key_delete', p_provider, 'api_key', now());
+  insert into public.vault_access_log(organization_id, actor_id, action, detail)
+  values (p_tenant, p_actor, 'provider_key_delete', left(p_provider, 200));
 
   return query select true, null;
 end; $$;
@@ -161,6 +159,6 @@ alter table public.vault_access_log
 alter table public.vault_access_log
   add constraint vault_access_log_action_check
     check (action in (
-      'sensitive_store', 'sensitive_reveal', 'sensitive_delete',
+      'store', 'store_via_link', 'reveal', 'delete', 'rewrap', 'request_issued',
       'provider_key_save', 'provider_key_delete'
     ));
