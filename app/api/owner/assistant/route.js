@@ -1,8 +1,9 @@
 import { createBubblesHandler } from '../../../../lib/server/bubbles-handler.mjs';
-import { sessionClient } from '../../../../lib/server/supabase.js';
+import { sessionClient, adminClient } from '../../../../lib/server/supabase.js';
+import { createProviderKeyVault } from '../../../../lib/server/provider-key-vault.mjs';
+import { keyringFromEnv } from '../../../../lib/server/envelope-vault.mjs';
 import { loadSnapshot } from '../../../../lib/server/assistant-snapshot.mjs';
 import { createSettingsStore } from '../../../../lib/server/assistant-settings-store.mjs';
-import { secretKeyValid } from '../../../../lib/server/secret-box.mjs';
 import { buildSystemPrompt } from '../../../../lib/assistant-prompt.mjs';
 import { settingsForPrompt } from '../../../../lib/assistant-settings-schema.mjs';
 
@@ -23,8 +24,8 @@ async function getTenantId(session, user) {
     .select('organization_id')
     .eq('user_id', user.id)
     .limit(1);
-  if (memberships?.data?.length > 0) {
-    return memberships.data[0].organization_id;
+  if (memberships?.length > 0) {
+    return memberships[0].organization_id;
   }
   return null;
 }
@@ -41,6 +42,26 @@ async function loadSettings(session, user, tenantId) {
   return loaded?.settings ?? loaded;
 }
 
+/** Service-role RPC caller for vault and budget operations. */
+function makeRpc() {
+  const admin = adminClient();
+  if (!admin) return null;
+  return async (name, args) => {
+    const { data, error } = await admin.rpc(name, args);
+    if (error) throw new Error(`rpc_failed:${name}:${error.message}`);
+    return data;
+  };
+}
+
+/** Provider key vault instance (write-only; plaintext never leaves the server). */
+const providerKeys = (() => {
+  const keyring = keyringFromEnv(env);
+  if (!keyring) return null;
+  const rpc = makeRpc();
+  if (!rpc) return null;
+  return createProviderKeyVault({ keyring, rpc });
+})();
+
 /**
  * Create the Bubbles handler with all dependencies.
  */
@@ -52,6 +73,8 @@ const handle = createBubblesHandler({
   loadSnapshot,
   buildSystemPrompt: (settings, language, snapshot) =>
     buildSystemPrompt(settingsForPrompt(settings), { language, snapshot }),
+  providerKeys,
+  rpc: makeRpc(),
 });
 
 export const POST = (request) => handle(request);
