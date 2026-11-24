@@ -37,6 +37,10 @@ test.beforeAll(async () => {
     await cp(join(root, 'app/owner/assistant', file), join(app, file));
   }
   for (const file of ['layout.js', 'globals.css']) await cp(join(root, 'app', file), join(app, file));
+  // The copied root layout imports the bubble background; mirror that dependency so
+  // the fixture compiles instead of silently serving an error page.
+  await mkdir(join(dir, 'lib'));
+  await cp(join(root, 'lib/bubbles-bg.js'), join(dir, 'lib/bubbles-bg.js'));
   await writeFile(join(app, 'page.js'), fixturePage);
   await writeFile(join(dir, 'package.json'), '{"private":true,"name":"owner-chat-fixture"}');
   for (const name of ['node_modules', 'public']) await symlink(join(root, name), join(dir, name), 'dir');
