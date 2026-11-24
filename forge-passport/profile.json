@@ -1,0 +1,27 @@
+{
+  "schema": "forgeflight.passport.v2",
+  "realm": "repo:forge-federation",
+  "slug": "forge-federation",
+  "remote": "https://github.com/dwaynebroussard67-art/forge-federation",
+  "name": "forge-federation",
+  "createdAt": "2026-10-23T11:45:16.400Z",
+  "updatedAt": "2026-10-23T11:45:16.664Z",
+  "languages": [
+    "JavaScript (254)",
+    "TypeScript (84)",
+    "Markdown (59)",
+    "HTML (23)",
+    "JSON (20)",
+    "CSS (6)"
+  ],
+  "frameworks": [],
+  "packageManager": "npm",
+  "testCommand": "npm test",
+  "entryPoints": [],
+  "loc": 82986,
+  "fileCount": 470,
+  "conventions": {
+    "test": "verify with `npm test`",
+    "evidence": "every claim in memories.jsonl points at something re-derivable in evidence.jsonl"
+  }
+}

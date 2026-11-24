@@ -1,0 +1,48 @@
+{
+  "note": "Hand-labeled. TRUE = the scanner should report this file; FALSE = it must not. Some files hold more than one shape.",
+  "tp-privilege-compare.js": {
+    "label": true,
+    "class": "hardcoded-identity",
+    "why": "branch taken on a literal name"
+  },
+  "tp-authority-field.js": {
+    "label": true,
+    "class": "hardcoded-identity",
+    "why": "authority field set to a privileged name"
+  },
+  "tp-role-escalation.js": {
+    "label": true,
+    "class": "hardcoded-identity",
+    "why": "escalation decided by a literal role"
+  },
+  "fp-default-param.js": {
+    "label": false,
+    "why": "ordinary default parameter - grants nothing"
+  },
+  "fp-witness-kind.js": {
+    "label": false,
+    "why": "witness is an enum kind, not an identity"
+  },
+  "fp-display-label.js": {
+    "label": false,
+    "why": "comparison picks a UI label"
+  },
+  "fp-comment-only.js": {
+    "label": false,
+    "why": "the pattern appears only in a comment"
+  },
+  "tp-node-identity.js": {
+    "label": true,
+    "class": "hardcoded-identity",
+    "why": "a fixed node identity is what authorizes a witness"
+  },
+  "fp-local-variable.js": {
+    "label": false,
+    "why": "a local label assignment, not an object property"
+  },
+  "tp-automated-approval.js": {
+    "label": true,
+    "class": "hardcoded-identity",
+    "why": "an approval baked in as a literal string"
+  }
+}

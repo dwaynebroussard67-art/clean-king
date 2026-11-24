@@ -1,31 +1,26 @@
 {
-  "name": "the-king-of-clean-demo",
+  "name": "forge-federation",
   "version": "0.1.0",
   "private": true,
-  "scripts": {
-    "dev": "next dev --hostname 0.0.0.0",
-    "build": "next build",
-    "start": "next start --hostname 0.0.0.0",
-    "test": "node --test",
-    "test:e2e": "playwright test",
-    "test:production": "node scripts/production-smoke.mjs",
-    "audit:secrets": "node scripts/secret-scan.mjs"
-  },
-  "dependencies": {
-    "@supabase/ssr": "^0.12.7",
-    "@supabase/supabase-js": "^2.119.0",
-    "lucide-react": "^1.76.0",
-    "next": "16.4.6",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "zod": "^4.6.7"
-  },
-  "devDependencies": {
-    "@axe-core/playwright": "^4.14.0",
-    "@electric-sql/pglite": "^0.5.17",
-    "@playwright/test": "^1.65.1"
-  },
+  "description": "The Forge Federation \u2014 the carrier. A hash-chained, equation-keyed, realm-scoped collective across every repository you own.",
+  "main": "src/federation/index.js",
+  "type": "commonjs",
   "engines": {
-    "node": ">=22.0.0"
-  }
+    "node": ">=18"
+  },
+  "scripts": {
+    "test": "node --test \"test/*.test.js\"",
+    "redqueen": "node test/redqueen.js",
+    "audit": "node bin/diamond.js src",
+    "probe:rate": "node bin/probe-rate.js",
+    "attack:verify": "node bin/attack-verify.js",
+    "check:remote": "node bin/check-remote.js",
+    "heldout": "node bin/heldout.js",
+    "desk": "node bin/desk.js",
+    "door": "node bin/door.js",
+    "stats": "node bin/stats.js",
+    "verify": "npm test && npm run redqueen && npm run audit && npm run probe:rate && npm run attack:verify",
+    "talk": "node bin/talk.js"
+  },
+  "license": "UNLICENSED"
 }

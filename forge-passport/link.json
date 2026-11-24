@@ -1,0 +1,19 @@
+{
+  "schema": "forgeflight.link.v1",
+  "realm": "repo:forge-federation",
+  "slug": "forge-federation",
+  "hub": "/home/user/.forge-federation",
+  "serves": [
+    "context",
+    "ask",
+    "tool",
+    "skill",
+    "remember",
+    "evidence"
+  ],
+  "request": {
+    "shape": "{ from, kind, name?, arg?, reason? }",
+    "note": "Request, never command. The hub authorizes; this repository asks."
+  },
+  "offline": "PASSPORT.md and this directory are readable with no hub. The hub only adds."
+}
