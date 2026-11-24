@@ -153,9 +153,60 @@ export default function OwnerChat({ enabled, personaName, ownerName, speakReplie
     }
   }
 
+  useEffect(() => {
+    if (locked) return;
+    fetch('/api/owner/assistant/actions?action=get_briefing')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d?.ok && d.message) setBriefing(d.message); })
+      .catch(() => {});
+  }, [locked]);
+
+  async function executeAction(action, payload = {}) {
+    setActionBusy(true);
+    setPendingPermission(null);
+    try {
+      const isRead = action === 'get_briefing' || action.startsWith('list_') || action === 'recall_memories';
+      const res = await fetch(
+        isRead ? `/api/owner/assistant/actions?action=${encodeURIComponent(action)}` : '/api/owner/assistant/actions',
+        isRead ? { method: 'GET' } : {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action, payload }),
+        }
+      );
+      const data = await res.json().catch(() => null);
+      if (data?.ok) {
+        setActionFeed(old => [...old, data]);
+      } else {
+        setActionFeed(old => [...old, { ok: false, message: 'Could not complete that action, boss.' }]);
+      }
+    } catch {
+      setActionFeed(old => [...old, { ok: false, message: 'Network error while running action.' }]);
+    } finally {
+      setActionBusy(false);
+    }
+  }
+
+  function requestAction(action, payload, label) {
+    const isMutation = !action.startsWith('list_') && action !== 'get_briefing' && action !== 'recall_memories';
+    if (isMutation && !autopilot) {
+      setPendingPermission({ action, payload, label });
+      return;
+    }
+    executeAction(action, payload);
+  }
+
   return (
     <div className="as-chat-shell" lang={lang}>
-      <div className="assistant-language">
+      <div className="assistant-language" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+        <button
+          className={`btn small ${autopilot ? 'dark' : 'light'}`}
+          type="button"
+          aria-pressed={autopilot}
+          onClick={() => setAutopilot(a => !a)}
+        >
+          {autopilot ? 'Autopilot: ON' : 'Autopilot: OFF'}
+        </button>
         <button className="btn light small" type="button" lang={lang === 'en' ? 'es' : 'en'}
           onClick={() => setLang(lang === 'en' ? 'es' : 'en')}>{t.switch}</button>
       </div>
@@ -166,8 +217,81 @@ export default function OwnerChat({ enabled, personaName, ownerName, speakReplie
       {!locked && <section className="chat-card owner-chat" aria-label={t.title}>
         <div className="chat-message">
           <div className="chat-avatar"><Sparkles size={18} aria-hidden="true" /></div>
-          <div><strong>{personaName}</strong><p>{t.intro(personaName, ownerName)}</p></div>
+          <div>
+            <strong>{personaName}</strong>
+            <p>{briefing || t.intro(personaName, ownerName)}</p>
+          </div>
         </div>
+        <div className="as-actions" style={{ flexWrap: 'wrap', marginBottom: '0.75rem' }}>
+          <button className="btn light small" type="button" disabled={actionBusy} onClick={() => executeAction('get_briefing')}>Morning Briefing</button>
+          <button className="btn light small" type="button" disabled={actionBusy} onClick={() => executeAction('list_applicants')}>Review Applicants</button>
+          <button className="btn light small" type="button" disabled={actionBusy} onClick={() => executeAction('list_quotes')}>Review Quotes</button>
+          <button className="btn light small" type="button" disabled={actionBusy} onClick={() => executeAction('list_onboarding')}>Onboarding</button>
+          <button className="btn light small" type="button" disabled={actionBusy} onClick={() => executeAction('recall_memories')}>Memories</button>
+        </div>
+        {pendingPermission && (
+          <div className="chat-message" role="alert" style={{ border: '1px solid #d97706', padding: '0.75rem', borderRadius: '8px', marginBottom: '0.75rem' }}>
+            <div>
+              <strong>{personaName} needs your go-ahead:</strong>
+              <p>Click below if you want me to: <em>{pendingPermission.label}</em></p>
+              <div className="as-actions" style={{ marginTop: '0.5rem' }}>
+                <button className="btn dark small" type="button" disabled={actionBusy}
+                  onClick={() => executeAction(pendingPermission.action, pendingPermission.payload)}>Allow &amp; Run</button>
+                <button className="btn light small" type="button" onClick={() => setPendingPermission(null)}>Cancel</button>
+              </div>
+            </div>
+          </div>
+        )}
+        {actionFeed.map((item, idx) => (
+          <div key={`act-${idx}`} className="chat-message" style={{ marginBottom: '0.75rem' }}>
+            <div className="chat-avatar"><Sparkles size={18} aria-hidden="true" /></div>
+            <div style={{ width: '100%' }}>
+              <strong>{personaName}</strong>
+              <p>{item.message}</p>
+              {item.data?.applicants?.length > 0 && (
+                <ul style={{ listStyle: 'none', padding: 0, margin: '0.5rem 0', display: 'grid', gap: '0.5rem' }}>
+                  {item.data.applicants.map(a => (
+                    <li key={a.id} style={{ padding: '0.5rem', border: '1px solid #e5e7eb', borderRadius: '6px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                      <span><strong>{a.first_name}</strong> · {a.area} · <em>{a.status}</em></span>
+                      <span style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}>
+                        {a.status !== 'hired' && <>
+                          <button className="btn light small" type="button" onClick={() => requestAction('update_applicant_status', { applicantId: a.id, status: 'screening' }, `Move ${a.first_name} to screening`)}>Screen</button>
+                          <button className="btn dark small" type="button" onClick={() => requestAction('hire_applicant', { applicantId: a.id }, `Hire ${a.first_name} & start onboarding`)}>Hire</button>
+                          <button className="btn light small" type="button" onClick={() => requestAction('update_applicant_status', { applicantId: a.id, status: 'passed' }, `Pass on ${a.first_name}`)}>Pass</button>
+                        </>}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {item.data?.quotes?.length > 0 && (
+                <ul style={{ listStyle: 'none', padding: 0, margin: '0.5rem 0', display: 'grid', gap: '0.5rem' }}>
+                  {item.data.quotes.map(q => (
+                    <li key={q.id} style={{ padding: '0.5rem', border: '1px solid #e5e7eb', borderRadius: '6px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                      <span><strong>{q.contact_name}</strong> · {q.building_type} ({q.size}) · <em>{q.status}</em></span>
+                      <span style={{ display: 'flex', gap: '0.25rem' }}>
+                        <button className="btn light small" type="button" onClick={() => requestAction('update_quote_status', { quoteId: q.id, status: 'contacted' }, `Mark ${q.contact_name} contacted`)}>Contacted</button>
+                        <button className="btn dark small" type="button" onClick={() => requestAction('update_quote_status', { quoteId: q.id, status: 'closed' }, `Close quote for ${q.contact_name}`)}>Close</button>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {item.data?.items?.length > 0 && (
+                <div style={{ marginTop: '0.5rem' }}>
+                  <button className="btn dark small" type="button" onClick={() => requestAction('confirm_onboarding', {}, 'Confirm all proposed onboarding items')}>Confirm All Proposed ({item.data.proposedCount})</button>
+                </div>
+              )}
+              {item.data?.memories?.length > 0 && (
+                <ul style={{ margin: '0.5rem 0', paddingLeft: '1.25rem' }}>
+                  {item.data.memories.map(m => (
+                    <li key={m.id}><strong>[{m.category}] {m.memory_key}:</strong> {m.content}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        ))}
         <p className="as-note" id="as-sharing">{t.notice}</p>
         <div role="log" aria-label={t.log} aria-live="polite" aria-relevant="additions">
           {pairs.map((p, i) => <div key={i}>
