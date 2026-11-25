@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Bubbles — Clean King Demo Widget</title>
+<style>
+body{margin:0;background:#000;color:#fff;font-family:system-ui,Arial,sans-serif;display:flex;min-height:100vh;align-items:center;justify-content:center;padding:20px}
+.card{max-width:520px;width:100%;background:#111;border:1px solid #2a2a2a;border-radius:20px;padding:20px;text-align:center}
+video{width:280px;height:280px;object-fit:cover;border-radius:50%;background:#000}
+h1{margin:12px 0 4px;font-size:24px} p{color:#bbb;line-height:1.5}
+.btns{display:flex;gap:10px;justify-content:center;margin:16px 0;flex-wrap:wrap}
+button{border:0;padding:12px 18px;border-radius:999px;font-weight:700;cursor:pointer}
+.rest{background:#fff;color:#000}.think{background:#7c5cff;color:#fff}.hire{background:#22c55e;color:#000}
+.note{font-size:12px;color:#999;border-top:1px solid #222;padding-top:12px;margin-top:12px}
+#status{font-weight:700}
+</style></head><body><div class="card">
+<video id="bubblesVideo" autoplay muted loop playsinline src="bubbles-rest.mp4"></video>
+<h1>Hi, I'm Bubbles ✨</h1>
+<p id="status">At rest — calm, one bubble, light playing across it.</p>
+<p>I'm your guide for this Clean King walkthrough. This is example-only demo data.</p>
+<div class="btns">
+<button class="rest" onclick="setState('rest')">At Rest</button>
+<button class="think" onclick="setState('thinking')">Thinking / Noodling</button>
+<button class="hire" onclick="setState('thinking')">Simulate: Click Hire</button>
+</div>
+<div class="note">Session-only example notes. No account, training assignment or real shift has been created.<br>Real onboarding is disabled in this build. Shout out to Meta AI for helping build Bubbles.</div>
+</div>
+<script>
+const v=document.getElementById('bubblesVideo'); const s=document.getElementById('status');
+function setState(mode){
+ if(mode==='rest'){ v.src='bubbles-rest.mp4'; s.textContent='At rest — calm, one bubble, light playing across it.'; }
+ else { v.src='bubbles-thinking.mp4'; s.textContent='Noodling… little bubbles vibrating and rising while I think.'; }
+ v.play();
+}
+</script></body></html>
