@@ -1,7 +1,8 @@
+import { defaultBrand } from '../../../lib/brand.mjs';
 import ScannerClient from './scanner-client';
 
 export const metadata = {
-  title: 'QR Scanner | Clean King',
+  title: `QR Scanner | ${defaultBrand.name}`,
 };
 
 export default function CrewScanPage() {

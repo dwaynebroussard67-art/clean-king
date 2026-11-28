@@ -7,3 +7,6 @@ coverage
 .cache
 playwright-report
 test-results
+
+# Unrelated uploaded archives (not application source)
+Forge-Load-*.zip

@@ -10,7 +10,7 @@ test('meeting walkthrough updates local examples without real submissions',async
  const errors=[]; const api=[];
  page.on('pageerror',e=>errors.push(e.message));
  page.on('request',req=>{if(new URL(req.url()).pathname.startsWith('/api/'))api.push(req.url())});
- await page.goto('/');
+ await page.goto('/workspace');
  await expect(page.getByText('Example workspace · Changes stay in this browser until the page is refreshed')).toBeVisible();
  await expect(page.getByText(/DEMO WORKSPACE|Demo only|· DEMO/)).toHaveCount(0);
  await page.getByRole('button',{name:/New applicants 03/}).click();
@@ -54,7 +54,7 @@ test('meeting walkthrough updates local examples without real submissions',async
 });
 
 test('Spanish workspace and map remain honest about example information',async({page})=>{
- await page.goto('/');
+ await page.goto('/workspace');
  await page.getByRole('button',{name:'EN · Switch to Spanish'}).click();
  await expect(page.locator('html')).toHaveAttribute('lang','es');
  await navigate(page,'Contratación');

@@ -4,10 +4,10 @@
 .as-chat-shell .chat-answer { white-space: pre-wrap; }
 .as-chat-shell .chat-message { margin-block: 1rem; }
 .as-chat-shell .chat-message strong, .as-chat-shell .chat-message p, .as-chat-shell .chat-user { font-size: .95rem; }
-.as-chat-shell .chat-message small, .as-composer small { color: #594b47; }
-.as-chat-shell .form-error { padding: .75rem; color: #7e2038; background: #fbebed; }
+.as-chat-shell .chat-message small, .as-composer small { color: var(--color-594b47); }
+.as-chat-shell .form-error { padding: .75rem; color: var(--color-7e2038); background: var(--color-fbebed); }
 .as-chat-shell .form-error a { color: inherit; text-decoration: underline; }
-.as-note { margin-block: 1rem; padding: .85rem; color: #503e35; background: #faf4ec; border-radius: .6rem; }
+.as-note { margin-block: 1rem; padding: .85rem; color: var(--color-503e35); background: var(--color-faf4ec); border-radius: .6rem; }
 .as-composer { display: grid; gap: .55rem; margin-top: 1rem; }
 .as-composer label { font-weight: 650; }
 .as-composer textarea {
@@ -15,16 +15,16 @@
   width: 100%;
   min-width: 0;
   min-height: 44px;
-  border: 1px solid #9d8982;
+  border: 1px solid var(--color-9d8982);
   border-radius: .5rem;
   padding: .65rem;
   resize: vertical;
 }
 .as-actions { display: flex; flex-wrap: wrap; gap: .55rem; }
 .as-chat-shell button { min-height: 44px; }
-.as-chat-shell button[aria-pressed="true"] { border-color: #632539; background: #f6e5da; }
-.as-chat-shell :is(button, a, textarea):focus-visible { outline: 3px solid #854123; outline-offset: 3px; }
-.as-status { margin: .7rem 0 0; color: #334e38; }
+.as-chat-shell button[aria-pressed="true"] { border-color: var(--color-632539); background: var(--color-f6e5da); }
+.as-chat-shell :is(button, a, textarea):focus-visible { outline: 3px solid var(--color-854123); outline-offset: 3px; }
+.as-status { margin: .7rem 0 0; color: var(--color-334e38); }
 .as-status:empty { margin: 0; }
 @media (prefers-reduced-motion: reduce) {
   .as-chat-shell * { transition: none; animation: none; scroll-behavior: auto; }

@@ -1,5 +1,7 @@
 'use client';
 
+import { defaultBrand } from '../../lib/brand.mjs';
+
 import { useEffect, useRef, useState } from 'react';
 import { Mic, MicOff, Send, Volume2, VolumeX, X } from 'lucide-react';
 
@@ -148,7 +150,7 @@ export default function BubblesWidget() {
                 background: 'radial-gradient(circle at 30% 30%, #ffffff, #67e8f9 45%, #a855f7 90%)',
                 boxShadow: '0 0 8px rgba(103,232,249,0.7)',
               }} />
-              <strong style={{ fontSize: '14px' }}>Bubbles · Clean King</strong>
+              <strong style={{ fontSize: '14px' }}>{defaultBrand.assistantName} · {defaultBrand.name}</strong>
             </div>
             <div style={{ display: 'flex', gap: '6px' }}>
               <button

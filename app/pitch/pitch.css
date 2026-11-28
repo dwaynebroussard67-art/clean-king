@@ -1,0 +1,271 @@
+/* THE $1,000,000 QUESTION — investor pitch room. Scoped with .pitch- */
+
+.pitch-root {
+  --pk-bg: var(--color-0b0f14);
+  --pk-panel: var(--color-131a22);
+  --pk-line: rgba(212, 175, 94, 0.22);
+  --pk-gold: var(--color-e8c77e);
+  --pk-cream: var(--color-f4efe4);
+  --pk-dim: var(--color-9aa7b4);
+  --pk-cyan: var(--color-67e8f9);
+  position: relative;
+  min-height: 100vh;
+  background:
+    radial-gradient(900px 600px at 82% -8%, rgba(103, 232, 249, 0.11), transparent 65%),
+    radial-gradient(760px 520px at 8% 12%, rgba(232, 199, 126, 0.10), transparent 70%),
+    var(--pk-bg);
+  color: var(--pk-cream);
+  font-family: 'Manrope', 'DM Sans', system-ui, -apple-system, sans-serif;
+  padding-bottom: 120px;
+  overflow: hidden;
+}
+
+.pitch-root::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(rgba(255,255,255,0.022) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.022) 1px, transparent 1px);
+  background-size: 48px 48px;
+  pointer-events: none;
+  mask-image: linear-gradient(to bottom, var(--color-000) 0%, transparent 75%);
+}
+
+.pitch-root > * { position: relative; z-index: 1; }
+
+/* The real animated Bubbles field rendered by lib/bubbles-bg.js. The higher
+   specificity keeps it fixed behind the content instead of inheriting the
+   relative positioning applied to .pitch-root children. */
+.pitch-root > .pitch-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.5;
+}
+
+.pitch-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--pk-gold);
+  box-shadow: 0 0 12px var(--pk-gold);
+  display: inline-block; flex: none;
+}
+
+/* ---------- Hero ---------- */
+.pitch-hero { border-bottom: 1px solid var(--pk-line); }
+.pitch-hero-inner { max-width: 1180px; margin: 0 auto; padding: 64px 28px 56px; }
+.pitch-eyebrow {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 11px; font-weight: 800; letter-spacing: 0.22em;
+  color: var(--pk-gold); text-transform: uppercase;
+}
+.pitch-hero h1 {
+  margin: 18px 0 8px;
+  font-size: clamp(42px, 7.2vw, 92px);
+  line-height: 0.98; font-weight: 800; letter-spacing: -0.045em;
+  background: linear-gradient(100deg, var(--color-fff8e8) 8%, var(--pk-gold) 48%, var(--color-fff) 92%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.pitch-tagline { font-size: clamp(18px, 2.2vw, 26px); font-weight: 600; margin: 0 0 12px; color: var(--color-fff); }
+.pitch-deck { max-width: 720px; color: var(--pk-dim); font-size: 15px; line-height: 1.65; margin: 0 0 34px; }
+.pitch-deck strong { color: var(--pk-cream); }
+
+.pitch-hero-row { display: flex; align-items: center; gap: 40px; flex-wrap: wrap; }
+
+/* The real CharacterBubble, scaled up and lit up — no image substitute. */
+.pitch-char {
+  width: 190px; height: 190px; flex: none;
+  border-radius: 50%; display: grid; place-items: center;
+  background: radial-gradient(circle at 40% 35%, rgba(103,232,249,0.20), rgba(168,85,247,0.12) 55%, transparent 72%);
+  box-shadow: 0 0 80px rgba(103,232,249,0.20), inset 0 0 0 1px rgba(255,255,255,0.08);
+}
+.pitch-char .char-bubble {
+  width: 132px !important; height: 132px !important;
+  border-color: var(--color-e8c77e) !important;
+  box-shadow: 0 0 44px rgba(232,199,126,0.35), 0 10px 30px rgba(0,0,0,0.5) !important;
+  background: radial-gradient(circle at 32% 28%, var(--color-ffffff) 0%, var(--color-c9f5ff) 38%, var(--color-b78bf0) 78%, var(--color-3b82f6) 100%) !important;
+}
+.pitch-char .char-bubble-idle { width: 78px !important; height: 78px !important; border-color: rgba(255,255,255,0.65) !important; background: rgba(255,255,255,0.72) !important; }
+.pitch-avatar-exact {
+  width: 190px; height: 190px; flex: none; object-fit: contain;
+  border-radius: 28px;
+  filter: drop-shadow(0 18px 45px rgba(103,232,249,0.28));
+}
+
+.pitch-hero-copy { flex: 1 1 420px; min-width: 280px; }
+.pitch-narrator { font-size: 11px; letter-spacing: 0.2em; color: var(--pk-gold); font-weight: 800; margin-bottom: 18px; }
+.pitch-narrator strong { color: var(--color-fff); }
+.pitch-narrator span { color: var(--pk-dim); letter-spacing: 0.06em; font-weight: 500; }
+.pitch-hero-actions { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; }
+.pitch-play-main {
+  border: 0; cursor: pointer; padding: 16px 26px; border-radius: 999px;
+  background: linear-gradient(100deg, var(--color-f2d593), var(--color-c9a24f));
+  color: var(--color-17130a); font-size: 15px; font-weight: 800; letter-spacing: 0.01em;
+  box-shadow: 0 12px 34px rgba(232,199,126,0.28);
+  transition: transform .16s ease, box-shadow .16s ease;
+}
+.pitch-play-main:hover { transform: translateY(-2px); box-shadow: 0 18px 42px rgba(232,199,126,0.4); }
+.pitch-play-main span { margin-right: 8px; }
+.pitch-ghost {
+  color: var(--pk-cream); text-decoration: none; font-size: 14px; font-weight: 700;
+  padding: 15px 20px; border: 1px solid var(--pk-line); border-radius: 999px;
+}
+.pitch-ghost:hover { border-color: var(--pk-gold); color: var(--pk-gold); }
+.pitch-hint { color: var(--pk-dim); font-size: 12px; line-height: 1.6; margin: 18px 0 0; }
+.pitch-hint code, .pitch-assets code { color: var(--pk-cyan); }
+
+/* ---------- Facts ---------- */
+.pitch-facts { max-width: 1180px; margin: 0 auto; padding: 40px 28px 8px; }
+.pitch-facts-head { display: flex; justify-content: space-between; align-items: baseline; gap: 20px; flex-wrap: wrap; margin-bottom: 18px; }
+.pitch-facts-head span { font-size: 11px; font-weight: 800; letter-spacing: 0.22em; color: var(--pk-gold); }
+.pitch-facts-head small { color: var(--pk-dim); font-size: 11px; }
+.pitch-facts-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.pitch-fact {
+  background: linear-gradient(160deg, rgba(255,255,255,0.045), rgba(255,255,255,0.012));
+  border: 1px solid var(--pk-line); border-radius: 14px; padding: 20px;
+}
+.pitch-fact strong { display: block; font-size: 32px; letter-spacing: -0.04em; color: var(--color-fff); }
+.pitch-fact > span { display: block; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.12em; color: var(--pk-gold); margin-top: 2px; }
+.pitch-fact p { color: var(--pk-dim); font-size: 12px; line-height: 1.55; margin: 10px 0 12px; min-height: 36px; }
+.pitch-fact code, .pitch-receipts code, .pitch-verify code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10.5px; color: var(--pk-cyan); background: rgba(103,232,249,0.08);
+  border: 1px solid rgba(103,232,249,0.16); padding: 3px 7px; border-radius: 5px;
+}
+
+/* ---------- Body ---------- */
+.pitch-body {
+  max-width: 1180px; margin: 40px auto 0; padding: 0 28px;
+  display: grid; grid-template-columns: 330px minmax(0, 1fr); gap: 22px; align-items: start;
+}
+.pitch-rail {
+  position: sticky; top: 24px;
+  background: rgba(19,26,34,0.92); border: 1px solid var(--pk-line);
+  border-radius: 16px; padding: 14px; backdrop-filter: blur(12px);
+}
+.pitch-rail-head { display: flex; justify-content: space-between; font-size: 10px; font-weight: 800; letter-spacing: 0.2em; color: var(--pk-gold); padding: 8px 8px 14px; }
+.pitch-rail-head span { color: var(--pk-dim); letter-spacing: 0.05em; }
+.pitch-chapter-btn {
+  width: 100%; display: flex; align-items: center; gap: 12px; text-align: left;
+  background: transparent; border: 1px solid transparent; border-radius: 10px;
+  color: var(--pk-cream); cursor: pointer; padding: 10px; margin-bottom: 2px;
+  transition: background .15s, border-color .15s;
+}
+.pitch-chapter-btn:hover { background: rgba(255,255,255,0.05); }
+.pitch-chapter-btn.is-active { background: rgba(232,199,126,0.10); border-color: rgba(232,199,126,0.35); }
+.pitch-ch-num { font-size: 11px; font-weight: 800; color: var(--pk-gold); width: 22px; flex: none; }
+.pitch-ch-text { flex: 1; min-width: 0; }
+.pitch-ch-text strong { display: block; font-size: 13px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pitch-ch-text small { display: block; font-size: 10px; color: var(--pk-dim); margin-top: 2px; }
+.pitch-ch-play { font-size: 10px; color: var(--pk-gold); flex: none; }
+.pitch-rail-all {
+  width: 100%; margin-top: 10px; padding: 12px; cursor: pointer;
+  border: 1px solid rgba(232,199,126,0.45); border-radius: 10px;
+  background: rgba(232,199,126,0.10); color: var(--pk-gold); font-weight: 800; font-size: 12px;
+}
+.pitch-rail-all:hover { background: rgba(232,199,126,0.2); }
+
+.pitch-transcript {
+  position: relative; max-height: 720px; overflow-y: auto; padding-right: 8px;
+  scrollbar-color: rgba(232,199,126,0.4) transparent;
+}
+.pitch-chapter {
+  border: 1px solid rgba(255,255,255,0.07); border-left: 3px solid transparent;
+  border-radius: 14px; padding: 22px 24px; margin-bottom: 12px;
+  background: rgba(19,26,34,0.6); cursor: pointer;
+  transition: border-color .2s, background .2s;
+}
+.pitch-chapter:hover { background: rgba(25,34,44,0.8); }
+.pitch-chapter.is-active {
+  border-color: rgba(232,199,126,0.35); border-left-color: var(--pk-gold);
+  background: linear-gradient(100deg, rgba(232,199,126,0.09), rgba(19,26,34,0.7));
+  box-shadow: 0 12px 34px rgba(0,0,0,0.25);
+}
+.pitch-chapter-top { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; margin-bottom: 12px; }
+.pitch-chapter-n { font-size: 10px; font-weight: 800; letter-spacing: 0.16em; color: var(--pk-gold); }
+.pitch-chapter-top h2 { margin: 0; font-size: 21px; letter-spacing: -0.02em; }
+.pitch-chapter-time { font-size: 10px; color: var(--pk-dim); margin-left: auto; }
+.pitch-chapter-text { color: var(--color-d7dde4); font-size: 14px; line-height: 1.78; margin: 0 0 16px; }
+.pitch-chapter.is-active .pitch-chapter-text { color: var(--color-fff); }
+.pitch-receipts { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+.pitch-receipts > span { font-size: 9px; font-weight: 800; letter-spacing: 0.18em; color: var(--pk-dim); margin-right: 4px; }
+
+/* ---------- Asset status ---------- */
+.pitch-assets { max-width: 1180px; margin: 44px auto 0; padding: 0 28px; }
+.pitch-assets-card {
+  border: 1px solid rgba(103,232,249,0.25); border-radius: 18px; padding: 30px;
+  background: linear-gradient(150deg, rgba(103,232,249,0.07), rgba(19,26,34,0.75) 55%);
+}
+.pitch-assets-head { display: flex; align-items: center; gap: 10px; font-size: 10px; font-weight: 800; letter-spacing: 0.22em; color: var(--pk-cyan); }
+.pitch-assets-head .pitch-dot { background: var(--pk-cyan); box-shadow: 0 0 12px var(--pk-cyan); }
+.pitch-assets-card h2 { margin: 16px 0 14px; font-size: 26px; letter-spacing: -0.025em; }
+.pitch-assets-card p { color: var(--color-c3ccd6); font-size: 13.5px; line-height: 1.75; max-width: 900px; }
+.pitch-assets-card code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; }
+.pitch-assets-card em { color: var(--color-fff); font-style: normal; font-weight: 700; }
+.pitch-assets-strong { color: var(--color-fff) !important; font-weight: 700; }
+.pitch-assets-card ol { color: var(--color-c3ccd6); font-size: 13.5px; line-height: 1.9; padding-left: 20px; max-width: 900px; }
+.pitch-assets-card li strong { color: var(--pk-gold); }
+.pitch-assets-foot { color: var(--pk-dim) !important; font-size: 12px !important; }
+.pitch-assets-status {
+  margin-top: 18px; display: inline-block; font-size: 10px; font-weight: 800; letter-spacing: 0.12em;
+  color: var(--pk-cyan); border: 1px solid rgba(103,232,249,0.3); border-radius: 999px; padding: 8px 14px;
+}
+
+/* ---------- Verify / footer ---------- */
+.pitch-verify { max-width: 1180px; margin: 44px auto 0; padding: 0 28px; }
+.pitch-verify h2 { font-size: 26px; letter-spacing: -0.025em; margin: 0 0 18px; }
+.pitch-verify-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.pitch-verify-grid > div { background: rgba(255,255,255,0.035); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 16px; }
+.pitch-verify-grid a { color: var(--pk-cyan); font-family: ui-monospace, monospace; font-size: 11.5px; text-decoration: none; }
+.pitch-verify-grid p { color: var(--pk-dim); font-size: 11.5px; line-height: 1.5; margin: 10px 0 0; }
+.pitch-verify-note { color: var(--pk-dim) !important; font-size: 12.5px !important; line-height: 1.7; max-width: 900px; margin-top: 18px !important; }
+.pitch-verify-note strong { color: var(--pk-gold); }
+.pitch-doc-link { display: inline-block; margin-top: 14px; color: var(--pk-gold); font-size: 13px; font-weight: 700; text-decoration: none; border-bottom: 1px solid rgba(232,199,126,0.4); padding-bottom: 2px; }
+.pitch-footer { max-width: 1180px; margin: 44px auto 0; padding: 22px 28px; border-top: 1px solid var(--pk-line); display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; font-size: 10px; letter-spacing: 0.16em; color: var(--pk-dim); }
+
+/* ---------- Sticky player ---------- */
+.pitch-player {
+  position: fixed; bottom: 14px; left: 14px; right: 92px; z-index: 9000;
+  display: flex; align-items: center; gap: 14px;
+  background: rgba(15,21,28,0.96); border: 1px solid rgba(232,199,126,0.35);
+  border-radius: 16px; padding: 10px 14px;
+  box-shadow: 0 18px 50px rgba(0,0,0,0.55); backdrop-filter: blur(16px);
+}
+.pitch-player-btn {
+  width: 44px; height: 44px; flex: none; border-radius: 50%; border: 0; cursor: pointer;
+  background: linear-gradient(100deg, var(--color-f2d593), var(--color-c9a24f)); color: var(--color-17130a); font-size: 14px; font-weight: 800;
+}
+.pitch-player-info { min-width: 152px; flex: none; }
+.pitch-player-info strong { display: block; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; }
+.pitch-player-info span { display: block; font-size: 10px; color: var(--pk-dim); margin-top: 3px; }
+.pitch-progress { position: relative; flex: 1; height: 8px; border-radius: 999px; background: rgba(255,255,255,0.12); cursor: pointer; min-width: 60px; }
+.pitch-progress-fill { position: absolute; inset: 0 auto 0 0; border-radius: 999px; background: linear-gradient(90deg, var(--pk-gold), var(--pk-cyan)); }
+.pitch-progress-tick { position: absolute; top: -3px; width: 2px; height: 14px; background: rgba(255,255,255,0.5); }
+.pitch-player-all { flex: none; border: 1px solid rgba(232,199,126,0.4); background: transparent; color: var(--pk-gold); border-radius: 999px; padding: 9px 14px; font-size: 11px; font-weight: 800; cursor: pointer; }
+.pitch-player-all:hover { background: rgba(232,199,126,0.12); }
+
+/* Reduced motion: keep Bubbles visible, just still. */
+@media (prefers-reduced-motion: reduce) {
+  .pitch-char .char-bubble { display: flex !important; }
+  .pitch-char .char-bubble-idle { animation: none !important; }
+}
+
+@media (max-width: 980px) {
+  .pitch-facts-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .pitch-body { grid-template-columns: 1fr; }
+  .pitch-rail { position: static; }
+  .pitch-transcript { max-height: none; overflow: visible; }
+  .pitch-verify-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 620px) {
+  .pitch-hero-inner { padding: 44px 18px 40px; }
+  .pitch-facts, .pitch-body, .pitch-assets, .pitch-verify, .pitch-footer { padding-left: 18px; padding-right: 18px; }
+  .pitch-facts-grid, .pitch-verify-grid { grid-template-columns: 1fr; }
+  .pitch-char, .pitch-avatar-exact { width: 130px; height: 130px; }
+  .pitch-char .char-bubble { width: 96px !important; height: 96px !important; }
+  .pitch-player { right: 14px; bottom: 84px; gap: 8px; padding: 8px; }
+  .pitch-player-info { min-width: 96px; }
+  .pitch-player-info strong { max-width: 110px; }
+  .pitch-player-all { display: none; }
+  .pitch-chapter { padding: 18px; }
+}
