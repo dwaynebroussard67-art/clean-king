@@ -59,7 +59,7 @@ export default async function Audit({ searchParams }) {
     <div className="owner-heading"><div>
       <div className="mini-label"><Bi en="OWNER WORKSPACE · AUDIT LOG" es="ESPACIO DEL PROPIETARIO · REGISTRO DE AUDITORÍA"/></div>
       <h1><Bi en="Audit log." es="Registro de auditoría."/></h1>
-      <p className="public-intro"><Bi en={`Latest 100 events for ${selectedOrg?.name ?? 'this franchise'}. Read-only.`} es={`Últimos 100 eventos para ${selectedOrg?.name ?? 'esta franquicia'}. Solo lectura.`}/></p>
+      <p className="public-intro"><Bi en={`Latest 100 events for ${selectedOrg?.name ?? 'this business'}. Read-only.`} es={`Últimos 100 eventos para ${selectedOrg?.name ?? 'esta empresa'}. Solo lectura.`}/></p>
     </div><div className="owner-heading-actions no-print"><Link className="btn light" href={requestedOrg ? `/owner?org=${selectedOrgId}` : '/owner'}><Bi en="Back to inbox" es="Volver a la bandeja"/></Link><form action={signOut}><button className="btn light"><Bi en="Sign out" es="Cerrar sesión"/></button></form></div></div>
     <div className="inline-notice no-print"><Bi en="Applicant phone numbers and names never appear here — only status/clearance actions, referral and onboarding events." es="Aquí nunca aparecen números de teléfono ni nombres de solicitantes — solo acciones de estado/autorización y eventos de referencias e incorporación."/></div>
     {auditError
@@ -69,7 +69,7 @@ export default async function Audit({ searchParams }) {
             <thead><tr><th><Bi en="When" es="Cuándo"/></th><th><Bi en="Action" es="Acción"/></th><th><Bi en="Entity" es="Entidad"/></th><th><Bi en="Actor" es="Actor"/></th><th><Bi en="Details" es="Detalles"/></th></tr></thead>
             <tbody>
               {(entries ?? []).length === 0
-                ? <tr><td colSpan={5}><Bi en="No audit events for this franchise yet." es="Aún no hay eventos de auditoría para esta franquicia."/></td></tr>
+                ? <tr><td colSpan={5}><Bi en="No audit events for this business yet." es="Aún no hay eventos de auditoría para esta empresa."/></td></tr>
                 : (entries ?? []).map((entry) => <tr key={entry.id}>
                     <td>{new Date(entry.created_at).toLocaleString('en-US', { timeZone: 'America/Chicago' })}</td>
                     <td>{entry.action}</td>
@@ -80,6 +80,6 @@ export default async function Audit({ searchParams }) {
             </tbody>
           </table>
         </section>}
-    <p className="muted no-print"><Bi en="Global administrative events (for example the emergency stop) are not shown on this franchise view." es="Los eventos administrativos globales (por ejemplo, el paro de emergencia) no se muestran en esta vista de franquicia."/></p>
+    <p className="muted no-print"><Bi en="Global administrative events (for example the emergency stop) are not shown on this business view." es="Los eventos administrativos globales (por ejemplo, el paro de emergencia) no se muestran en esta vista de empresa."/></p>
   </main></div>;
 }

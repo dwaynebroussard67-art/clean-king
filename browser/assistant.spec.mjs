@@ -30,13 +30,15 @@ export default async function Page({ searchParams }) {
 test.use({ viewport: { width: 375, height: 812 }, reducedMotion: 'reduce' });
 test.beforeAll(async () => {
   test.setTimeout(120000);
-  dir = await mkdtemp(join(tmpdir(), 'clean-king-owner-chat-'));
+  dir = await mkdtemp(join(tmpdir(), 'lcj-owner-chat-'));
   const app = join(dir, 'app');
   await mkdir(app);
   for (const file of ['owner-chat.js', 'settings.css']) {
     await cp(join(root, 'app/owner/assistant', file), join(app, file));
   }
-  for (const file of ['layout.js', 'globals.css']) await cp(join(root, 'app', file), join(app, file));
+  await mkdir(join(dir, 'lib'));
+  await cp(join(root, 'lib/brand.mjs'), join(dir, 'lib/brand.mjs'));
+  for (const file of ['layout.js', 'globals.css', 'site.css']) await cp(join(root, 'app', file), join(app, file));
   await writeFile(join(app, 'page.js'), fixturePage);
   await writeFile(join(dir, 'package.json'), '{"private":true,"name":"owner-chat-fixture"}');
   for (const name of ['node_modules', 'public']) await symlink(join(root, name), join(dir, name), 'dir');
@@ -154,8 +156,12 @@ test('mute works while a reply is in flight; unmuted playback honors the configu
 });
 
 test('a disabled owner assistant offers settings, not a send action', async ({ page }) => {
+  const actionRequests = [];
+  page.on('request', r => { if (r.url().includes('/api/owner/assistant/actions')) actionRequests.push(r.url()); });
   await page.goto(`${origin}/?off=1`);
   await expect(page.getByRole('alert').getByRole('link')).toHaveAttribute('href', '/owner/assistant/settings');
   await expect(page.getByLabel('Your question', { exact: true })).toBeDisabled();
   await expect(page.getByRole('button', { name: 'Send question' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Morning Briefing' })).toHaveCount(0);
+  expect(actionRequests).toEqual([]);
 });

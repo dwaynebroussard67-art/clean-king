@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { brand } from '../../../lib/brand.mjs';
 import { Camera, CheckCircle2, QrCode, XCircle } from 'lucide-react';
 
 export default function ScannerClient() {
@@ -84,7 +85,7 @@ export default function ScannerClient() {
     <div style={{ maxWidth: '520px', margin: '2rem auto', padding: '1.5rem', background: '#fff', borderRadius: '16px', border: '1px solid #e5e7eb' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1rem' }}>
         <QrCode size={24} />
-        <h1 style={{ margin: 0, fontSize: '1.35rem' }}>Clean King QR Scanner</h1>
+        <h1 style={{ margin: 0, fontSize: '1.35rem' }}>{brand.name} QR Scanner</h1>
       </div>
       <p style={{ color: '#4b5563', fontSize: '0.95rem', marginBottom: '1.25rem' }}>
         Scan a site check-in QR code, equipment tag, or referral invite.

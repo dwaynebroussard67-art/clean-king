@@ -7,7 +7,7 @@ start the demo.
 
 ## A. Demo walkthrough (browser-memory, example data)
 
-This is what the demo audience sees at `/`, and it is **example-only** — no database
+This is what the demo audience sees at `/workspace`, and it is **example-only** — no database
 write, no employee account, no message, no verification.
 
 1. **Hiring** (top nav → Hiring): the list shows example applicants.

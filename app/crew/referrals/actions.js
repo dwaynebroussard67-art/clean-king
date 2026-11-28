@@ -21,7 +21,7 @@ export async function createInvitation() {
 
   // Multi-franchise: invitations are scoped to the employee's organization.
   const orgId = await employeeOrganization(client);
-  if (!orgId) return { error: 'No franchise is associated with this account.' };
+  if (!orgId) return { error: 'No business is associated with this account.' };
 
   const code = randomBytes(32).toString('hex');
   const hash = createHash('sha256').update(code).digest('hex');
