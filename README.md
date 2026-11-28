@@ -1,10 +1,19 @@
-# Goodwork — interactive concept
+# Louisiana Commercial Janitor
 
-A Phase 0 demo inspired by the owner-provided Build Dossier. Goodwork is a placeholder name, not an assertion of franchise affiliation. All applicants, crew, shifts, metrics, sites and activity are invented. No customer or franchisor marks are used.
+**Our People Are Our Assets.** A bilingual public business site for Louisiana Commercial Janitor, with a separate example owner workspace. The project brief identifies **Andy Merchant** as the owner. See [brand and owner research](docs/brand-and-owner.md) for source attribution, the limits of public records and questions to confirm before launch.
+
+- `/` — public company identity, service-planning guide and owner introduction; `/?lang=es` for Spanish.
+- `/quote` and `/apply` — branded quote and crew intake pages. Real intake is **not enabled** by this rebrand. When unavailable, quote planning runs only in the visitor’s browser.
+- `/workspace` — the original interactive walkthrough. Applicants, crew, sites, metrics and shifts are examples, not company facts or an authenticated session.
+- `/owner` — separate, gated owner access. Public visitors are never greeted as the owner or shown the owner assistant.
+
+The public mark and script lettering are cropped from the supplied business-page artwork. Workplace photography is illustrative; it does not depict Andy, actual employees or customers. Font licenses are in `public/fonts`. No franchise affiliation is asserted. Branding is not a database migration, a domain rename or a production launch.
+
+**Repository name:** the package and intended GitHub slug are `louisiana-commercial-janitor`. Renaming the hosted `clean-king` repository requires GitHub repository-administration permission; changing the package name does not change the remote or the deployment URL. After a remote rename, check deployment integrations and the security-advisory link.
 
 ## Security
 
-See [SECURITY.md](SECURITY.md). Vulnerabilities should be reported privately through a GitHub security advisory; there is no staffed 24/7 contact yet. The system is a synthetic demonstration — do not enter real data, and see `RED_TEAM_REVIEW.md` and `LAUNCH_READINESS.md` for the gates that must pass before any real use. Every page carries a demo banner; owners can review franchise-scoped activity at `/owner/audit`.
+See [SECURITY.md](SECURITY.md). Vulnerabilities should be reported privately through a GitHub security advisory; there is no staffed 24/7 contact yet. The system is a synthetic demonstration — do not enter real data, and see `RED_TEAM_REVIEW.md` and `LAUNCH_READINESS.md` for the gates that must pass before any real use. The example workspace labels its sample data; approved owners can review organization-scoped activity at `/owner/audit`.
 
 ## Run locally
 
@@ -22,17 +31,17 @@ Open http://localhost:3000. Run `npm test` for unit/local database tests, `npm r
 - Review sample applicants, simulate decisions and toggle site clearance. These changes live only in browser memory and reset on reload.
 - Simulate a school or hospital call-out. The sequence skips workers who are unavailable, lack Rookie Run or the applicable clearance, exceed an hour cap, or lack the health track for hospital work. The first eligible sample worker is assumed to accept; nobody is contacted or assigned.
 - Preview a three-lesson sequence and simulate completion. There are no actual training videos, watch-time checks, certificates, or persisted records.
-- Explore a scripted assistant, service templates and an owner page shell, in English or Spanish.
+- Explore a scripted assistant, service templates and the owner introduction, in English or Spanish.
 
 ## Important limits before real use
 
-The **demo at `/` is not a secure or production-ready system**. Its owner workspace is not authenticated and its actions do not send messages or save data. Separate, disabled-by-default intake and email-notification foundations are described below, but have not been deployed or verified with live providers. Do not enter real personal, school, patient, or customer data. The simulated Bench is not a scheduling engine: it does not implement offer timeouts, overlap detection, rotation, quiet hours, premium approvals, or concurrency control.
+The **demo at `/workspace` is not a secure or production-ready system**. Its owner workspace is not authenticated and its actions do not send messages or save data. Separate, disabled-by-default intake and email-notification foundations are described below, but have not been deployed or verified with live providers. Do not enter real personal, school, patient, or customer data. The simulated Bench is not a scheduling engine: it does not implement offer timeouts, overlap detection, rotation, quiet hours, premium approvals, or concurrency control.
 
 Before launch, confirm branding/franchise permissions, actual services and territory, site screening requirements, training sources and translations, and approved contact details. Implement passkeys and server-side authorization, database row-level security, consent and SMS registration, secure queues and atomic shift claims, privacy controls, and explicit approvals for external messages and sensitive actions. Review the dossier for the full requirements and open questions.
 
 ## Intake foundation (not yet approved for production)
 
-The separate `/apply` and `/quote` pages and `/owner` inbox are the beginning of a real, persistent workflow. They are **off by default**. The demo at `/` remains fictional and is not connected to the inbox. Intake and development email-link login now fail closed whenever `NODE_ENV=production`, even if their flags are set. They can only be enabled for a controlled development/test environment; do not expose that environment publicly or enter real data. No project has been selected or modified, and nothing has been deployed.
+The separate `/apply` and `/quote` pages and `/owner` inbox are the beginning of a real, persistent workflow. They are **off by default**. The demo at `/workspace` remains fictional and is not connected to the inbox. Intake and development email-link login now fail closed whenever `NODE_ENV=production`, even if their flags are set. They can only be enabled for a controlled development/test environment; do not expose that environment publicly or enter real data. No project has been selected or modified, and nothing has been deployed.
 
 - The two forms validate on the server, use an explicit Turnstile verification action and hostname, cap request body size, and insert using a server-only service key. The application has optional job-related experience questions and a review/edit step before submission; optional answers are stored with the applicant and visible in the protected owner inbox. The owner email does not include these additional answers. An idempotency key reconciles retries with the same request ID and validated content; it does not guarantee exactly-once submission across tabs or lost sessions. The application collects optional SMS consent, consent timestamp and wording version, plus the form language. It does not send any messages. Quote requests do not grant SMS consent.
 - Owner accounts must exist in Supabase Auth **and** have a manually provisioned `owner_memberships` row. The inbox uses the signed-in user's session, not the service key; Postgres RLS and column grants restrict reads and updates. Status and clearance changes are recorded in the audit table without copying contact details. A development-only owner action can atomically mark an applicant hired and start an onboarding preparation record; no employee account, welcome message, verification, real training or schedule is created. The inbox uses independent newest-first keyset pagination for applications and quotes (25 per page), including a timestamp/ID tie-breaker. It still requires testing against an approved live Supabase project.

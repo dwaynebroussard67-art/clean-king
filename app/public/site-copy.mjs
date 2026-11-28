@@ -1,0 +1,58 @@
+import { brand } from '../../lib/brand.mjs';
+
+export const siteCopy = {
+  en: {
+    location: 'Louisiana, USA', category: 'Janitorial service', workspace: 'Workspace preview', signIn: 'Owner access',
+    home: 'Home', services: 'Services', people: 'Our people', careers: 'Careers', quote: 'Request a quote',
+    nav: 'Site navigation', open: 'Open navigation', close: 'Close navigation', skip: 'Skip to content',
+    heroLabel: 'People-first commercial cleaning', firstLine: 'Our People Are', secondLine: 'Our Assets',
+    intro: `Behind every clean workplace are people who care. Meet ${brand.owner}, owner of ${brand.name}.`,
+    explore: 'Explore services', meet: 'Meet our people', field: 'Field notes', previous: 'Previous field photo', next: 'Next field photo',
+    slides: [
+      ['Glass & surface care', 'Illustrative photo of a janitorial worker wiping a glass partition.'],
+      ['Floors & entryways', 'Illustrative photo of a floor scrubber on a polished lobby floor.'],
+      ['Office environments', 'Illustrative photo of a bright office with desks and glass meeting rooms.'],
+    ],
+    values: [['People first', 'Our guiding principle'], ['Owner-led', `${brand.owner}, owner`], ['Commercial focus', 'Janitorial care for workplaces']],
+    serviceLabel: '01 / Service guide', serviceTitle: 'Care for your workspace',
+    serviceIntro: 'Every building has a different rhythm. Explore the spaces below to start planning your cleaning request.',
+    serviceItems: [
+      { title: 'Offices & workspaces', label: 'Work environments', description: 'From desks to meeting rooms, where does your team spend its day?', detail: 'For a quote, note the number of rooms, the approximate floor area and when people use the building.' },
+      { title: 'Floors & entryways', label: 'Floor care', description: 'Start with the paths people take through your building.', detail: 'Describe the floor materials, busiest entrances and any areas that need special attention.' },
+      { title: 'Glass & shared surfaces', label: 'Surface care', description: 'Think about the doors, counters and partitions people touch most.', detail: 'List the shared surfaces and access restrictions you want the owner to consider. Scope and frequency can be discussed for your site.' },
+    ],
+    detailLink: 'Plan a request', guideLabel: 'Planning notes',
+    peopleLabel: '02 / Our people', peopleTitle: 'The person behind the business', ownerRole: 'Business owner',
+    ownerCopy: `${brand.owner} owns ${brand.name}. The company puts its crew at the center of its identity: “${brand.motto}.”`,
+    pageListing: 'On our business page', listingNote: 'Listed as “Always open.” Ask about availability for your building; the page listing is not a service appointment.',
+    careersLabel: '03 / Careers', careersTitle: 'There’s a person behind every clean.', careersCopy: 'Interested in the work? Explore the crew application and what it asks about experience and availability.', apply: 'Crew application',
+    footerNote: 'Illustrative photography, not actual employees or client sites.', top: 'Back to top',
+  },
+  es: {
+    location: 'Luisiana, EE. UU.', category: 'Servicio de limpieza', workspace: 'Espacio de ejemplo', signIn: 'Acceso del propietario',
+    home: 'Inicio', services: 'Servicios', people: 'Nuestra gente', careers: 'Empleo', quote: 'Pedir cotización',
+    nav: 'Navegación del sitio', open: 'Abrir navegación', close: 'Cerrar navegación', skip: 'Saltar al contenido',
+    heroLabel: 'Limpieza comercial centrada en las personas', firstLine: 'Nuestra gente es', secondLine: 'nuestro mayor valor',
+    intro: `Detrás de cada espacio limpio hay personas que lo cuidan. Conoce a ${brand.owner}, propietario de ${brand.name}.`,
+    explore: 'Ver servicios', meet: 'Nuestra gente', field: 'Notas de trabajo', previous: 'Foto anterior', next: 'Foto siguiente',
+    slides: [
+      ['Vidrios y superficies', 'Imagen ilustrativa de una trabajadora limpiando un panel de vidrio.'],
+      ['Pisos y entradas', 'Imagen ilustrativa de una máquina limpiadora en un vestíbulo.'],
+      ['Espacios de oficina', 'Imagen ilustrativa de una oficina luminosa con escritorios y salas de reunión.'],
+    ],
+    values: [['Las personas primero', 'Nuestro principio guía'], ['Dirección local', `${brand.owner}, propietario`], ['Enfoque comercial', 'Limpieza de espacios de trabajo']],
+    serviceLabel: '01 / Guía de servicios', serviceTitle: 'Cuidado de tu espacio',
+    serviceIntro: 'Cada edificio tiene su propio ritmo. Explora los espacios para empezar a preparar tu solicitud de limpieza.',
+    serviceItems: [
+      { title: 'Oficinas y salas', label: 'Entornos de trabajo', description: 'Del escritorio a la sala de reuniones, ¿dónde pasa el día tu equipo?', detail: 'Anota el número de salas, la superficie aproximada y el horario de uso del edificio.' },
+      { title: 'Pisos y entradas', label: 'Cuidado de pisos', description: 'Empieza por los recorridos más frecuentes dentro del edificio.', detail: 'Describe los materiales del piso, las entradas más transitadas y las zonas que requieren atención especial.' },
+      { title: 'Vidrios y superficies', label: 'Cuidado de superficies', description: 'Piensa en puertas, mostradores y paneles que la gente toca a menudo.', detail: 'Indica las superficies compartidas y las restricciones de acceso. El alcance y la frecuencia se pueden consultar para tu edificio.' },
+    ],
+    detailLink: 'Preparar solicitud', guideLabel: 'Notas para tu solicitud',
+    peopleLabel: '02 / Nuestra gente', peopleTitle: 'La persona detrás del negocio', ownerRole: 'Propietario',
+    ownerCopy: `${brand.owner} es el propietario de ${brand.name}. El lema de la empresa pone al equipo en primer lugar: «${brand.mottoEs}».`,
+    pageListing: 'En nuestra página del negocio', listingNote: 'La página indica «Siempre abierto». Consulta la disponibilidad para tu edificio; el horario de la página no es una cita de servicio.',
+    careersLabel: '03 / Empleo', careersTitle: 'Detrás de cada espacio limpio hay una persona.', careersCopy: '¿Te interesa el trabajo? Consulta la solicitud de empleo y sus preguntas sobre experiencia y disponibilidad.', apply: 'Solicitud de empleo',
+    footerNote: 'Imágenes ilustrativas; no representan personal ni instalaciones reales de clientes.', top: 'Volver al inicio',
+  },
+};

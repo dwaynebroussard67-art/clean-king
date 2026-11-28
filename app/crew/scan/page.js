@@ -1,7 +1,7 @@
 import ScannerClient from './scanner-client';
 
 export const metadata = {
-  title: 'QR Scanner | Clean King',
+  title: 'QR Scanner',
 };
 
 export default function CrewScanPage() {

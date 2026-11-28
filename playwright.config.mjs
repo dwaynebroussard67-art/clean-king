@@ -14,7 +14,7 @@ export default defineConfig({
     },
   },
   webServer: {
-    command: 'npm run dev -- --port 3100',
+    command: 'npm run dev -- --hostname 127.0.0.1 --port 3100',
     url: 'http://localhost:3100/apply',
     reuseExistingServer: false,
     timeout: 120000,

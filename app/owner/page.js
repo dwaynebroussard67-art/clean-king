@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
+import BubblesWidget from '../public/bubbles-widget';
 import PublicHeader from '../public/header';
 import { ownerLoginEnabled, sessionClient } from '../../lib/server/supabase';
 import { updateIntake, signOut } from './actions';
@@ -14,8 +15,8 @@ function Action({ type, id, field, value, children }) {
 // Server-rendered GET form: no client JS required to switch franchises.
 function OrgSwitcher({ orgs, selectedId }) {
   if (!orgs || orgs.length <= 1) return null;
-  return <form className="org-switcher" method="get" action="/owner"><label className="mini-label" htmlFor="org-select"><Bi en="Franchise:" es="Franchicia:"/></label>
-    <select id="org-select" name="org" defaultValue={selectedId} aria-label="Select franchise">
+  return <form className="org-switcher" method="get" action="/owner"><label className="mini-label" htmlFor="org-select"><Bi en="Business:" es="Empresa:"/></label>
+    <select id="org-select" name="org" defaultValue={selectedId} aria-label="Select business">
       {orgs.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
     </select>
     <button className="btn light small" type="submit"><Bi en="Switch" es="Cambiar"/></button>
@@ -38,7 +39,7 @@ export default async function Owner({ searchParams }) {
   const { data: orgs } = await client
     .from('organizations').select('id, name, slug, status')
     .in('id', orgIds);
-  if (!orgs || orgs.length === 0) return <div className="public-page"><PublicHeader/><main className="public-main"><div className="public-card"><h1><Bi en="No franchises found." es="No se encontraron Franquicias."/></h1><form action={signOut}><button className="btn light"><Bi en="Sign out" es="Cerrar sesión"/></button></form></div></main></div>;
+  if (!orgs || orgs.length === 0) return <div className="public-page"><PublicHeader/><main className="public-main"><div className="public-card"><h1><Bi en="No businesses found." es="No se encontraron empresas."/></h1><form action={signOut}><button className="btn light"><Bi en="Sign out" es="Cerrar sesión"/></button></form></div></main></div>;
 
   const params = await searchParams;
   const requestedOrg = typeof params.org === 'string' ? params.org : null;
@@ -91,12 +92,12 @@ export default async function Owner({ searchParams }) {
       .in('onboarding_id', onboarding.data.map((o) => o.id))
     : { data: [], error: null };
 
-  return <div className="public-page"><PublicHeader/><main className="owner-main">
+  return <div className="public-page"><PublicHeader/><BubblesWidget/><main className="owner-main">
     <div className="owner-heading"><div>
       <div className="mini-label"><Bi en="OWNER WORKSPACE · DEVELOPMENT ACCESS" es="ESPACIO DEL PROPIETARIO · ACCESO DE DESARROLLO"/></div>
       {orgs.length > 1 && <OrgSwitcher orgs={orgs} selectedId={selectedOrgId}/>}
       <h1><Bi en="Intake inbox." es="Bandeja de solicitudes."/></h1>
-      {selectedOrg && orgs.length > 1 && <p className="public-intro"><Bi en={`Franchising: ${selectedOrg.name}`} es={`Franchicia: ${selectedOrg.name}`}/></p>}
+      {selectedOrg && orgs.length > 1 && <p className="public-intro"><Bi en={`Business: ${selectedOrg.name}`} es={`Empresa: ${selectedOrg.name}`}/></p>}
       <p className="public-intro"><Bi en="Applications and quote requests are stored privately. These controls do not send texts." es="Las solicitudes de empleo y presupuestos se guardan de forma privada. Estos controles no envían mensajes de texto."/></p>
     </div><div className="owner-heading-actions"><Link className="btn dark" href="/owner/assistant"><Bi en="Owner assistant" es="Asistente del propietario"/></Link><Link className="btn light" href={requestedOrg ? `/owner/audit?org=${selectedOrgId}` : '/owner/audit'}><Bi en="Audit log" es="Registro de auditoría"/></Link><form action={signOut}><button className="btn light"><Bi en="Sign out" es="Cerrar sesión"/></button></form></div></div>
     <div className="inline-notice"><Bi en="Email-link access is temporary and does not meet the passkey or approved-device requirements for launch." es="El acceso mediante enlace de correo es temporal y no cumple los requisitos de llaves de acceso ni de dispositivos aprobados para el lanzamiento."/></div>

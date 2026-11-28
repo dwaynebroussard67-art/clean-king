@@ -63,8 +63,8 @@ export default async function OnboardingPage() {
         <div className="public-card">
           <h1><Bi en="Onboarding checklist" es="Lista de incorporación"/></h1>
           <p className="public-intro">
-            <Bi en="Provide your franchise information tier by tier. Tier 0 is public data already on your site; tier 1 is delegated data you confirm; tier 2 is sensitive data you (or your employees) type securely." />
-            <Bi en="Proporcione la información de su franquicia nivel por nivel. El nivel 0 es datos públicos ya en su sitio; el nivel 1 es datos delegados que confirma; el nivel 2 es datos sensibles que usted (o sus empleados) escriben de forma segura." />
+            <Bi en="Provide your business information tier by tier. Tier 0 is public data already on your site; tier 1 is delegated data you confirm; tier 2 is sensitive data you (or your employees) type securely."
+                es="Proporcione la información de su empresa nivel por nivel. El nivel 0 es datos públicos ya en su sitio; el nivel 1 es datos delegados que confirma; el nivel 2 es datos sensibles que usted (o sus empleados) escriben de forma segura." />
           </p>
 
           <section className="onboarding-tier">

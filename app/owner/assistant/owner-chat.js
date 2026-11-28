@@ -84,7 +84,7 @@ function speak(text, lang, rate, pitch, voiceName) {
   } catch { /* A speech failure must not turn a successful reply into a chat error. */ }
 }
 
-export default function OwnerChat({ enabled, personaName, ownerName, speakReplies, rate, pitch, voiceName }) {
+export default function OwnerChat({ enabled, personaName, ownerName, speakReplies, rate, pitch, voiceName, interactiveActions = false }) {
   const [lang, setLang] = useState('en');
   const [input, setInput] = useState('');
   const [pairs, setPairs] = useState([]);
@@ -94,6 +94,14 @@ export default function OwnerChat({ enabled, personaName, ownerName, speakReplie
   const [muted, setMuted] = useState(false);
   const mute = useRef(false), active = useRef(null);
   const locked = error === 'sign_in' || error === 'not_authorized';
+  // The current owner page promises read-only chat. Keep the separate action
+  // controls dormant unless explicitly mounted by an authorized action view.
+  const showActions = interactiveActions && enabled && !locked;
+  const [briefing, setBriefing] = useState('');
+  const [actionFeed, setActionFeed] = useState([]);
+  const [actionBusy, setActionBusy] = useState(false);
+  const [pendingPermission, setPendingPermission] = useState(null);
+  const [autopilot, setAutopilot] = useState(false);
   const t = copy[lang];
   const problem = error || (!enabled && 'disabled');
 
@@ -154,14 +162,15 @@ export default function OwnerChat({ enabled, personaName, ownerName, speakReplie
   }
 
   useEffect(() => {
-    if (locked) return;
+    if (!showActions) return;
     fetch('/api/owner/assistant/actions?action=get_briefing')
       .then(r => r.ok ? r.json() : null)
       .then(d => { if (d?.ok && d.message) setBriefing(d.message); })
       .catch(() => {});
-  }, [locked]);
+  }, [showActions]);
 
   async function executeAction(action, payload = {}) {
+    if (!showActions || actionBusy) return;
     setActionBusy(true);
     setPendingPermission(null);
     try {
@@ -199,14 +208,14 @@ export default function OwnerChat({ enabled, personaName, ownerName, speakReplie
   return (
     <div className="as-chat-shell" lang={lang}>
       <div className="assistant-language" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-        <button
+        {showActions && <button
           className={`btn small ${autopilot ? 'dark' : 'light'}`}
           type="button"
           aria-pressed={autopilot}
           onClick={() => setAutopilot(a => !a)}
         >
           {autopilot ? 'Autopilot: ON' : 'Autopilot: OFF'}
-        </button>
+        </button>}
         <button className="btn light small" type="button" lang={lang === 'en' ? 'es' : 'en'}
           onClick={() => setLang(lang === 'en' ? 'es' : 'en')}>{t.switch}</button>
       </div>
@@ -219,10 +228,10 @@ export default function OwnerChat({ enabled, personaName, ownerName, speakReplie
           <div className="chat-avatar"><Sparkles size={18} aria-hidden="true" /></div>
           <div>
             <strong>{personaName}</strong>
-            <p>{briefing || t.intro(personaName, ownerName)}</p>
+            <p>{(showActions && briefing) || t.intro(personaName, ownerName)}</p>
           </div>
         </div>
-        <div className="as-actions" style={{ flexWrap: 'wrap', marginBottom: '0.75rem' }}>
+        {showActions && <><div className="as-actions" style={{ flexWrap: 'wrap', marginBottom: '0.75rem' }}>
           <button className="btn light small" type="button" disabled={actionBusy} onClick={() => executeAction('get_briefing')}>Morning Briefing</button>
           <button className="btn light small" type="button" disabled={actionBusy} onClick={() => executeAction('list_applicants')}>Review Applicants</button>
           <button className="btn light small" type="button" disabled={actionBusy} onClick={() => executeAction('list_quotes')}>Review Quotes</button>
@@ -292,6 +301,7 @@ export default function OwnerChat({ enabled, personaName, ownerName, speakReplie
             </div>
           </div>
         ))}
+        </>}
         <p className="as-note" id="as-sharing">{t.notice}</p>
         <div role="log" aria-label={t.log} aria-live="polite" aria-relevant="additions">
           {pairs.map((p, i) => <div key={i}>
